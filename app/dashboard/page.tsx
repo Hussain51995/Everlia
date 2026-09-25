@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 export default function DashboardPage() {
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-3xl border border-[#C4EBF2] bg-gradient-to-r from-white via-[#F0FAFC] to-[#C4EBF2]/40 p-6 shadow-sm">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-3xl border border-[#C4EBF2] bg-[#0B1F3D] p-6 shadow-sm">
         <div>
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-[#C4EBF2] bg-white px-3 py-1 text-[11px] font-bold text-[#38B2D1] uppercase tracking-wider shadow-xs">
@@ -22,11 +22,11 @@ export default function DashboardPage() {
               Live Workspace Active
             </span>
           </div>
-          <h1 className="mt-2 text-2xl font-black text-[#0B1F3D] sm:text-3xl">
+          <h1 className="mt-2 text-2xl font-black text-white sm:text-3xl">
             Welcome back, Sarah
           </h1>
-          <p className="mt-1 text-xs text-[#557393] sm:text-sm">
-            Your automated direct mail touchpoints have generated <span className="font-bold text-[#0B1F3D]">14 repeat listing leads</span> this month.
+          <p className="mt-1 text-xs text-white sm:text-sm">
+            Your automated direct mail touchpoints have generated <span className="font-bold text-[#38B2D1]">14 repeat listing leads</span> this month.
           </p>
         </div>
 
