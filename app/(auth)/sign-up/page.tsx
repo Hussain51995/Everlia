@@ -11,7 +11,7 @@ export default function SignUpPage() {
   return (
     <AuthLayout
       title="Create your account"
-      subtitle="Join top agents automating client touchpoints and driving repeat listings."
+      subtitle="Select your industry and organization, then create your HomeLink login."
     >
       <SignUpForm />
     </AuthLayout>

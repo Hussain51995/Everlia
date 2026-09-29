@@ -4,10 +4,12 @@ import { useState } from "react";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { QuickCampaignModal } from "@/components/dashboard/QuickCampaignModal";
+import { useSession } from "@/hooks/auth";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [quickCampaignOpen, setQuickCampaignOpen] = useState(false);
+  useSession();
 
   return (
     <div className="flex min-h-screen w-full bg-[#F0FAFC] text-[#0B1F3D]">

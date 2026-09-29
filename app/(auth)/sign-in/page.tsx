@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { SignInForm } from "@/components/auth/SignInForm";
 import type { Metadata } from "next";
@@ -13,7 +14,9 @@ export default function SignInPage() {
       title="Welcome back"
       subtitle="Sign in to manage your automated direct mail campaigns & client retention."
     >
-      <SignInForm />
+      <Suspense fallback={<div className="h-40 animate-pulse rounded-2xl bg-[#F0FAFC]" />}>
+        <SignInForm />
+      </Suspense>
     </AuthLayout>
   );
 }

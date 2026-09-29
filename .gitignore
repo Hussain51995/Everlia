@@ -38,3 +38,12 @@ yarn-error.log*
 # Custom ignored files
 app/palette.scss.download
 *.download
+
+# supabase-schema
+supabase
+
+# documentation
+docs
+
+# seeds
+scripts

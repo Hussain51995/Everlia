@@ -10,7 +10,9 @@ import {
   ChevronDownIcon,
   CheckCircleIcon,
   MailIcon,
+  BuildingIcon,
 } from "@/components/ui/Icons";
+import { useAuthStore } from "@/stores/auth-store";
 
 interface DashboardHeaderProps {
   onOpenMobileSidebar: () => void;
@@ -20,6 +22,20 @@ interface DashboardHeaderProps {
 export function DashboardHeader({ onOpenMobileSidebar, onOpenQuickCampaign }: DashboardHeaderProps) {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const profile = useAuthStore((state) => state.profile);
+  const membership = useAuthStore((state) => state.membership);
+  const isPlatformAdmin = useAuthStore((state) => state.isPlatformAdmin);
+  const sessionReady = useAuthStore((state) => state.sessionReady);
+  const canUseMemberOrganizations = useAuthStore(
+    (state) => state.canUseMemberOrganizations
+  );
+
+  const displayName = [profile?.first_name, profile?.last_name]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+  const orgName = membership?.organization?.name ?? "No organization";
+  const industryName = membership?.organization?.industry?.name;
 
   const NOTIFICATIONS = [
     {
@@ -57,8 +73,26 @@ export function DashboardHeader({ onOpenMobileSidebar, onOpenQuickCampaign }: Da
         </button>
 
         <div className="hidden sm:block">
-          <h2 className="text-base font-extrabold text-[#0B1F3D]">CRM Overview</h2>
-          <p className="text-[11px] text-[#557393]">Real estate client retention & campaign metrics</p>
+          <h2 className="text-base font-extrabold text-[#0B1F3D]">
+            {isPlatformAdmin ? "Platform Admin" : "CRM Overview"}
+          </h2>
+          {sessionReady ? (
+            <p className="flex items-center gap-1 text-[11px] text-[#557393]">
+              <BuildingIcon className="h-3 w-3 text-[#38B2D1]" />
+              {isPlatformAdmin || !canUseMemberOrganizations ? (
+                <span className="font-semibold text-[#0B1F3D]">
+                  Industries & organizations
+                </span>
+              ) : (
+                <>
+                  <span className="font-semibold text-[#0B1F3D]">{orgName}</span>
+                  {industryName ? (
+                    <span className="text-[#557393]">· {industryName}</span>
+                  ) : null}
+                </>
+              )}
+            </p>
+          ) : null}
         </div>
       </div>
 
@@ -141,7 +175,9 @@ export function DashboardHeader({ onOpenMobileSidebar, onOpenQuickCampaign }: Da
             alt="User"
             className="h-7 w-7 rounded-lg object-cover"
           />
-          <span className="hidden md:inline-block text-xs font-bold text-[#0B1F3D]">Sarah J.</span>
+          <span className="hidden md:inline-block text-xs font-bold text-[#0B1F3D]">
+            {displayName || "Member"}
+          </span>
           <ChevronDownIcon className="h-3.5 w-3.5 text-[#557393]" />
         </div>
       </div>
