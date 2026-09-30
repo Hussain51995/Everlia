@@ -40,7 +40,7 @@ export function DashboardHome() {
             Welcome back, {firstName}
           </h1>
           <p className="mt-1 text-xs text-white sm:text-sm">
-            Manage industries and organizations for the HomeLink platform.
+            Manage industries and organizations for the Everlia platform.
           </p>
           <Link
             href="/dashboard/admin/organizations"

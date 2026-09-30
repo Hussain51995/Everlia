@@ -4,8 +4,8 @@ import { SignInForm } from "@/components/auth/SignInForm";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Sign In - HomeLink CRM",
-  description: "Access your HomeLink automated direct mail and client retention dashboard.",
+  title: "Sign In - Everlia CRM",
+  description: "Access your Everlia automated direct mail and client retention dashboard.",
 };
 
 export default function SignInPage() {

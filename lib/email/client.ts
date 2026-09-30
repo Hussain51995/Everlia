@@ -19,7 +19,7 @@ export function getEmailFromAddress() {
   const from = process.env.EMAIL_FROM?.trim();
   if (!from) {
     throw new Error(
-      'Missing EMAIL_FROM (e.g. "HomeLink <onboarding@yourdomain.com>")'
+      'Missing EMAIL_FROM (e.g. "Everlia <onboarding@yourdomain.com>")'
     );
   }
   return from;

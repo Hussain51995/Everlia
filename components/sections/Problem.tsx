@@ -64,7 +64,7 @@ export function Problem() {
             <p className="mt-6 max-w-[500px] text-sm leading-7 text-[#446688] sm:text-[15px]">
               After closing, it’s easy to lose touch. Important moments like
               home anniversaries, birthdays, and future move-up opportunities
-              often pass by.
+              often pass by. Everlia ensures every relationship stays alive long after the transaction ends.
             </p>
 
             <a

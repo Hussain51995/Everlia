@@ -14,7 +14,7 @@ export function VideoModal({ open, onClose }: { open: boolean; onClose: () => vo
             <div className="grid min-h-[380px] place-items-center bg-gradient-to-br from-white via-[#f5fcfd] to-[#c4ebf2] p-8 text-center">
               <div>
                 <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-ice-button text-white shadow-button"><PlayIcon className="h-7 w-7" /></span>
-                <h3 className="mt-5 text-3xl font-medium tracking-[-0.04em] text-ink">HomeLink overview</h3>
+                <h3 className="mt-5 text-3xl font-medium tracking-[-0.04em] text-ink">Everlia overview</h3>
                 <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[#587493]">Connect this modal to the final product demo or hosted walkthrough when the video asset is ready.</p>
               </div>
             </div>

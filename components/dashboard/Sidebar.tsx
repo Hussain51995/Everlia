@@ -136,7 +136,7 @@ export function Sidebar({ mobileOpen, onCloseMobile, onLaunchCampaign }: Sidebar
             <Link
               href="/"
               className="inline-flex items-center gap-2.5 group select-none"
-              aria-label="Back to HomeLink website"
+              aria-label="Back to Everlia website"
             >
               <span className="grid h-9 w-9 place-items-center text-[#38B2D1] sm:h-10 sm:w-10 transition-transform group-hover:scale-105">
                 <svg viewBox="0 0 32 32" className="h-full w-full fill-none stroke-current" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -145,7 +145,7 @@ export function Sidebar({ mobileOpen, onCloseMobile, onLaunchCampaign }: Sidebar
                 </svg>
               </span>
               <span className="leading-tight">
-                <span className="block text-[17px] font-extrabold tracking-[-0.03em] text-white">HomeLink™</span>
+                <span className="block text-[17px] font-extrabold tracking-[-0.03em] text-white">Everlia™</span>
                 <span className="block text-[8px] font-bold tracking-[0.14em] text-[#C4EBF2] uppercase">Clients For Life</span>
               </span>
             </Link>
@@ -257,7 +257,7 @@ export function Sidebar({ mobileOpen, onCloseMobile, onLaunchCampaign }: Sidebar
               </div>
               <div className="text-left">
                 <div className="text-xs font-bold text-white leading-tight">
-                  {displayName || "HomeLink User"}
+                  {displayName || "Everlia User"}
                 </div>
                 <div className="text-[10px] text-[#C4EBF2]/70 truncate max-w-[120px]">
                   {user?.email ?? "Member"}

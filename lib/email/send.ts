@@ -39,7 +39,7 @@ export async function sendVerificationEmail(input: {
 }) {
   return sendEmail({
     to: input.to,
-    subject: "Confirm your HomeLink email",
+    subject: "Confirm your Everlia email",
     html: verificationEmailHtml({
       firstName: input.firstName,
       verifyUrl: input.verifyUrl,
@@ -53,7 +53,7 @@ export async function sendPasswordResetEmail(input: {
 }) {
   return sendEmail({
     to: input.to,
-    subject: "Reset your HomeLink password",
+    subject: "Reset your Everlia password",
     html: passwordResetEmailHtml({
       resetUrl: input.resetUrl,
     }),

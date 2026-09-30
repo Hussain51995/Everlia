@@ -157,7 +157,7 @@ export function SignInForm() {
       </button>
 
       <div className="pt-2 text-center text-xs font-medium text-[#557393]">
-        Don&apos;t have a HomeLink account yet?{" "}
+        Don&apos;t have an Everlia account yet?{" "}
         <Link href="/sign-up" className="font-bold text-[#38B2D1] hover:underline">
           Create Account
         </Link>

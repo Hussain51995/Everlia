@@ -530,7 +530,7 @@ export function SignUpForm() {
               />
             </div>
             <p className="mt-1.5 text-[11px] text-[#557393]">
-              We&apos;ll check whether you already have a HomeLink account.
+              We&apos;ll check whether you already have an Everlia account.
             </p>
           </div>
 
@@ -801,7 +801,7 @@ export function SignUpForm() {
               className="mt-0.5 h-4 w-4 rounded border-[#C4EBF2] text-[#38B2D1] focus:ring-[#38B2D1]"
             />
             <span>
-              I agree to the HomeLink terms of service and privacy policy.
+              I agree to the Everlia terms of service and privacy policy.
             </span>
           </label>
 

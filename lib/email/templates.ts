@@ -33,7 +33,7 @@ export function renderBrandedEmail({
             </tr>
             <tr>
               <td style="padding:28px 28px 8px 28px;">
-                <p style="margin:0;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#38B2D1;">HomeLink</p>
+                <p style="margin:0;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#38B2D1;">Everlia</p>
                 <h1 style="margin:10px 0 0 0;font-size:24px;line-height:1.25;font-weight:800;color:#0B1F3D;">${escapeHtml(title)}</h1>
               </td>
             </tr>
@@ -70,10 +70,10 @@ export function verificationEmailHtml(params: {
 }) {
   const name = params.firstName?.trim() || "there";
   return renderBrandedEmail({
-    preview: "Confirm your HomeLink email to continue",
+    preview: "Confirm your Everlia email to continue",
     title: "Confirm your email",
     bodyHtml: `<p style="margin:0 0 12px 0;">Hi ${escapeHtml(name)},</p>
-<p style="margin:0;">Thanks for creating a HomeLink account. Confirm your email address to sign in and start managing client retention campaigns.</p>`,
+<p style="margin:0;">Thanks for creating an Everlia account. Confirm your email address to sign in and start managing client retention campaigns.</p>`,
     ctaLabel: "Verify email",
     ctaUrl: params.verifyUrl,
     footerNote: "If you did not create this account, you can ignore this email.",
@@ -84,9 +84,9 @@ export function passwordResetEmailHtml(params: {
   resetUrl: string;
 }) {
   return renderBrandedEmail({
-    preview: "Reset your HomeLink password",
+    preview: "Reset your Everlia password",
     title: "Reset your password",
-    bodyHtml: `<p style="margin:0 0 12px 0;">We received a request to reset your HomeLink password.</p>
+    bodyHtml: `<p style="margin:0 0 12px 0;">We received a request to reset your Everlia password.</p>
 <p style="margin:0;">Click the button below to choose a new password. This link expires soon for your security.</p>`,
     ctaLabel: "Reset password",
     ctaUrl: params.resetUrl,
