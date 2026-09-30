@@ -44,7 +44,7 @@ export function Footer() {
         </div>
 
         <div className="flex flex-col items-center justify-between gap-4 border-t border-[#C4EBF2] pt-6 text-[11px] font-medium text-[#6380a0] sm:flex-row">
-          <span>© 2026 HomeLink, Inc. All rights reserved.</span>
+          <span>© 2026 Everlia, Inc. All rights reserved.</span>
           <div className="flex gap-6">
             <a href="#" className="transition-colors hover:text-[#0B1F3D]">Privacy</a>
             <a href="#" className="transition-colors hover:text-[#0B1F3D]">Terms</a>

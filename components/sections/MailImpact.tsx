@@ -189,7 +189,7 @@ function MailVisual() {
         <div className="mx-auto mt-6 h-px w-16 bg-[#b8cee2]" />
       </div>
 
-      <div className="absolute bottom-[6%] left-[6%] z-20 flex items-center gap-3.5 rounded-[18px] border border-[#C4EBF2] bg-white px-4 py-3 shadow-[0_18px_40px_rgba(56,178,209,0.16)] sm:px-5 sm:py-3.5">
+      <div className="absolute bottom-[6%] left-[6%] z-20 flex items-center gap-3.5 rounded-[18px] bg-white px-4 py-3 shadow-[0_2px_8px_rgba(67,109,117,0.14),0_10px_30px_rgba(67,109,117,0.20)] sm:px-5 sm:py-3.5">
         <QRMark />
 
         <div>
@@ -211,73 +211,76 @@ function MailVisual() {
 export function MailImpact() {
   return (
     <section id="mail-impact" className="py-8 sm:py-12">
-      <div className="container-shell rounded-[26px] bg-gradient-to-r from-[#C4EBF2] via-[#43c5e6] to-[#C4EBF2] p-[2px] shadow-2xl shadow-[#38B2D1]/20">
-        <div
+      <div
+        className="
+    container-shell
+    grid
+    items-stretch
+    overflow-hidden
+    rounded-[24px]
+    bg-white
+    shadow-[0_2px_8px_rgba(67,109,117,0.14),0_4px_25px_rgba(67,109,117,0.20),0_24px_50px_-10px_rgba(67,109,117,0.30)]
+    transition-shadow
+    duration-300
+    hover:shadow-[0_4px_12px_rgba(67,109,117,0.18),0_8px_35px_rgba(67,109,117,0.26),0_30px_65px_-10px_rgba(67,109,117,0.38)]
+    lg:grid-cols-[1.02fr_0.98fr]
+  "
+      >
+        <Reveal className="relative h-full">
+          <div className="h-full">
+            <MailVisual />
+          </div>
+        </Reveal>
+
+        <Reveal
+          delay={0.08}
           className="
-            grid
-            items-stretch
-            overflow-hidden
-            rounded-[24px]
-            bg-white
-            lg:grid-cols-[1.02fr_0.98fr]
+            flex
+            h-full
+            flex-col
+            justify-center
+            bg-[linear-gradient(145deg,#ffffff_0%,#f5fcfd_58%,#f0fafc_100%)]
+            px-7
+            py-10
+            sm:px-10
+            lg:px-14
           "
         >
-          <Reveal className="relative h-full">
-            <div className="h-full">
-              <MailVisual />
-            </div>
-          </Reveal>
+          <SectionLabel>MORE THAN A CRM</SectionLabel>
 
-          <Reveal
-            delay={0.08}
-            className="
-              flex
-              h-full
-              flex-col
-              justify-center
-              bg-[linear-gradient(145deg,#ffffff_0%,#f5fcfd_58%,#f0fafc_100%)]
-              px-7
-              py-10
-              sm:px-10
-              lg:px-14
-            "
-          >
-            <SectionLabel>MORE THAN A CRM</SectionLabel>
+          <h2 className="mt-4 text-[clamp(2.7rem,4.5vw,4.45rem)] font-extrabold leading-[0.96] tracking-[-0.055em] text-[#0B1F3D]">
+            Real mail.
+            <br />
+            Real impact.
+          </h2>
 
-            <h2 className="mt-4 text-[clamp(2.7rem,4.5vw,4.45rem)] font-extrabold leading-[0.96] tracking-[-0.055em] text-[#0B1F3D]">
-              Real mail.
-              <br />
-              Real impact.
-            </h2>
+          <p className="mt-6 max-w-[500px] text-sm leading-7 text-[#446688] sm:text-[15px]">
+            Beautifully designed, personalized postcards and cards — printed,
+            addressed and delivered for you. Combined with email and optional
+            SMS, you stay top of mind without the extra work.
+          </p>
 
-            <p className="mt-6 max-w-[500px] text-sm leading-7 text-[#446688] sm:text-[15px]">
-              Beautifully designed, personalized postcards and cards — printed,
-              addressed and delivered for you. Combined with email and optional
-              SMS, you stay top of mind without the extra work.
-            </p>
+          <ul className="mt-6 space-y-3">
+            {bullets.map((item) => (
+              <li
+                key={item}
+                className="flex items-center gap-3 text-sm font-semibold text-[#0B1F3D]"
+              >
+                <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#38B2D1] text-white shadow-sm">
+                  <CheckIcon className="h-3.5 w-3.5" />
+                </span>
 
-            <ul className="mt-6 space-y-3">
-              {bullets.map((item) => (
-                <li
-                  key={item}
-                  className="flex items-center gap-3 text-sm font-semibold text-[#0B1F3D]"
-                >
-                  <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#38B2D1] text-white shadow-sm">
-                    <CheckIcon className="h-3.5 w-3.5" />
-                  </span>
+                {item}
+              </li>
+            ))}
+          </ul>
 
-                  {item}
-                </li>
-              ))}
-            </ul>
-
-            <div className="mt-8">
-              <PrimaryButton href="#features" className="px-7 text-xs">
-                Explore Features
-              </PrimaryButton>
-            </div>
-          </Reveal>
-        </div>
+          <div className="mt-8">
+            <PrimaryButton href="#features" className="px-7 text-xs">
+              Explore Features
+            </PrimaryButton>
+          </div>
+        </Reveal>
       </div>
     </section>
   );

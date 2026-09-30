@@ -50,7 +50,7 @@ export function Features() {
         <div className="grid gap-3.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
           {items.map(({ title, copy, Icon }, i) => (
             <Reveal key={i} delay={i * 0.04}>
-              <article className="flex min-h-[190px] h-full flex-col items-center justify-center rounded-xl bg-white px-4 py-6 text-center shadow-sm transition-transform hover:-translate-y-1">
+              <article className="flex min-h-[190px] h-full flex-col items-center justify-center rounded-xl bg-white px-4 py-6 text-center shadow-[0_2px_8px_rgba(67,109,117,0.12),0_8px_24px_rgba(67,109,117,0.16)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_4px_12px_rgba(67,109,117,0.18),0_16px_36px_rgba(67,109,117,0.24)]">
                 <span className="grid h-12 w-12 place-items-center rounded-full bg-[linear-gradient(145deg,#f5fcfd_0%,#c4ebf2_45%,#aad5de_75%,#38b2d1_100%)] text-[#38B2D1] shadow-sm">
                   <Icon className="h-6 w-6" />
                 </span>
@@ -65,7 +65,7 @@ export function Features() {
           ))}
 
           <Reveal delay={0.25}>
-            <article className="flex min-h-[190px] h-full flex-col justify-between rounded-xl bg-[linear-gradient(145deg,#ffffff_0%,#f5fcfd_50%,#c4ebf2_100%)] px-5 py-6 shadow-sm transition-transform hover:-translate-y-1">
+            <article className="flex min-h-[190px] h-full flex-col justify-between rounded-xl bg-[linear-gradient(145deg,#ffffff_0%,#f5fcfd_50%,#c4ebf2_100%)] px-5 py-6 shadow-[0_2px_8px_rgba(67,109,117,0.12),0_8px_24px_rgba(67,109,117,0.16)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_4px_12px_rgba(67,109,117,0.18),0_16px_36px_rgba(67,109,117,0.24)]">
               <h3 className="text-[clamp(1.4rem,1.8vw,1.85rem)] font-bold leading-[1.05] tracking-[-0.04em] text-[#38B2D1]">
                 More<br />
                 Relationships.<br />

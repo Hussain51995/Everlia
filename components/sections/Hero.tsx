@@ -251,9 +251,9 @@ export function Hero({ onVideo }: { onVideo: () => void }) {
                 lg:text-[29px]
               "
             >
-              Stronger Relationships
+              Relationships Alive.
               <br />
-              Brighter Futures.
+              Long After Closing.
             </motion.div>
 
             <h1
@@ -268,7 +268,7 @@ export function Hero({ onVideo }: { onVideo: () => void }) {
               Turn Every
               <br />
 
-              Closing Into a
+              Client Into a
               <br />
 
               <span className="text-[#38B2D1]">
@@ -287,9 +287,9 @@ export function Hero({ onVideo }: { onVideo: () => void }) {
                 sm:text-[17px]
               "
             >
-              Stay connected. Send meaningful touches.
+              Everlia keeps every client relationship alive long after the transaction ends.
               <br className="hidden sm:block" />
-              Create more referrals. Automatically.
+              Automate meaningful touchpoints & generate endless referrals.
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3.5">

@@ -18,7 +18,7 @@ const testimonials = [
     role: "Team Lead, Austin, TX"
   },
   {
-    quote: "HomeLink gives our agents a simple, consistent way to stay visible without adding more admin work.",
+    quote: "Everlia gives our agents a simple, consistent way to stay visible without adding more admin work.",
     name: "Maya K.",
     role: "Broker, Phoenix, AZ"
   },
@@ -59,7 +59,7 @@ export function Testimonials() {
         <div className="relative grid grid-cols-[44px_1fr_44px] items-center gap-3 sm:gap-5 pb-8">
           <button
             onClick={prev}
-            className="grid h-11 w-11 place-items-center rounded-xl bg-white text-[#38B2D1] shadow-sm transition-transform hover:scale-105"
+            className="grid h-11 w-11 place-items-center rounded-xl bg-white text-[#38B2D1] shadow-[0_4px_16px_rgba(67,109,117,0.16)] transition-all duration-300 hover:scale-105 hover:shadow-[0_6px_22px_rgba(67,109,117,0.24)]"
             aria-label="Previous testimonial"
           >
             <ArrowIcon className="h-4 w-4 rotate-180" />
@@ -72,7 +72,7 @@ export function Testimonials() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -16 }}
               transition={{ duration: 0.26 }}
-              className="grid min-h-[190px] items-center gap-5 rounded-xl bg-white px-7 py-7 shadow-sm sm:grid-cols-[76px_1fr] sm:px-8"
+              className="grid min-h-[190px] items-center gap-5 rounded-xl bg-white px-7 py-7 shadow-[0_2px_8px_rgba(67,109,117,0.14),0_8px_28px_rgba(67,109,117,0.18),0_20px_48px_-10px_rgba(67,109,117,0.26)] sm:grid-cols-[76px_1fr] sm:px-8"
             >
               <div className="relative h-[76px] w-[76px] shrink-0 overflow-hidden rounded-full">
                 <Image
@@ -100,7 +100,7 @@ export function Testimonials() {
 
           <button
             onClick={next}
-            className="grid h-11 w-11 place-items-center rounded-xl bg-white text-[#38B2D1] shadow-sm transition-transform hover:scale-105"
+            className="grid h-11 w-11 place-items-center rounded-xl bg-white text-[#38B2D1] shadow-[0_4px_16px_rgba(67,109,117,0.16)] transition-all duration-300 hover:scale-105 hover:shadow-[0_6px_22px_rgba(67,109,117,0.24)]"
             aria-label="Next testimonial"
           >
             <ArrowIcon className="h-4 w-4" />
