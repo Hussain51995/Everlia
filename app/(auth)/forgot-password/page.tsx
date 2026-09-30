@@ -3,8 +3,8 @@ import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Reset Password - HomeLink CRM",
-  description: "Recover access to your HomeLink agent account.",
+  title: "Reset Password - Everlia CRM",
+  description: "Recover access to your Everlia account.",
 };
 
 export default function ForgotPasswordPage() {

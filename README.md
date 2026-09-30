@@ -1,6 +1,6 @@
-# HomeLink Landing Page — Next.js
+# Everlia Landing Page — Next.js
 
-Production-ready recreation of the approved HomeLink landing-page concept.
+Production-ready application featuring the Everlia brand: "Turn Every Client Into a Client for Life."
 
 ## Stack
 - Next.js 14 App Router

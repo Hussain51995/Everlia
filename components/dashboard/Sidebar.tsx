@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
 
 import {
   LayoutDashboardIcon,
@@ -12,10 +11,16 @@ import {
   CalendarIcon,
   GiftIcon,
   LogOutIcon,
-  ChevronRightIcon,
-  SparklesIcon,
   CloseIcon,
+  BuildingIcon,
+  SparklesIcon,
+  PlusIcon,
 } from "@/components/ui/Icons";
+import { useSetActiveOrganization, useSignOut } from "@/hooks/auth";
+import { useAuthStore } from "@/stores/auth-store";
+import { useToast } from "@/components/ui/Toast";
+import { ThemeLoader } from "@/components/ui/ThemeLoader";
+import { ApiClientError } from "@/lib/api/client";
 
 function SettingsHelperIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -43,9 +48,78 @@ interface SidebarProps {
 
 export function Sidebar({ mobileOpen, onCloseMobile, onLaunchCampaign }: SidebarProps) {
   const pathname = usePathname();
+  const signOut = useSignOut();
+  const setActiveOrganization = useSetActiveOrganization();
+  const { showToast } = useToast();
+  const profile = useAuthStore((state) => state.profile);
+  const user = useAuthStore((state) => state.user);
+  const memberships = useAuthStore((state) => state.memberships);
+  const activeOrganizationId = useAuthStore((state) => state.activeOrganizationId);
+  const isPlatformAdmin = useAuthStore((state) => state.isPlatformAdmin);
+  const canUseMemberOrganizations = useAuthStore(
+    (state) => state.canUseMemberOrganizations
+  );
+  const sessionReady = useAuthStore((state) => state.sessionReady);
+
+  const displayName = [profile?.first_name, profile?.last_name]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+  const navItems = [
+    ...NAV_ITEMS,
+    ...(canUseMemberOrganizations
+      ? [
+          {
+            name: "Join organization",
+            href: "/dashboard/join-organization",
+            icon: PlusIcon,
+            badge: null as string | null,
+          },
+        ]
+      : []),
+    ...(isPlatformAdmin
+      ? [
+          {
+            name: "Industries & Orgs",
+            href: "/dashboard/admin/organizations",
+            icon: BuildingIcon,
+            badge: "Admin" as string | null,
+          },
+        ]
+      : []),
+  ];
+
+  const handleOrgChange = (organizationId: string) => {
+    if (!organizationId || organizationId === activeOrganizationId) return;
+
+    setActiveOrganization.mutate(
+      { organizationId },
+      {
+        onError: (error) => {
+          showToast({
+            tone: "error",
+            title: "Could not switch organization",
+            description:
+              error instanceof ApiClientError
+                ? error.message
+                : "Please try again.",
+          });
+        },
+      }
+    );
+  };
 
   return (
     <>
+      {setActiveOrganization.isPending ? (
+        <div className="fixed inset-0 z-[100] grid place-items-center bg-[#0B1F3D]/55 backdrop-blur-sm">
+          <div className="rounded-3xl border border-[#C4EBF2] bg-white px-8 py-7 shadow-2xl">
+            <ThemeLoader label="Switching organization…" size="lg" />
+          </div>
+        </div>
+      ) : null}
+
       {mobileOpen && (
         <div
           onClick={onCloseMobile}
@@ -62,7 +136,7 @@ export function Sidebar({ mobileOpen, onCloseMobile, onLaunchCampaign }: Sidebar
             <Link
               href="/"
               className="inline-flex items-center gap-2.5 group select-none"
-              aria-label="Back to HomeLink website"
+              aria-label="Back to Everlia website"
             >
               <span className="grid h-9 w-9 place-items-center text-[#38B2D1] sm:h-10 sm:w-10 transition-transform group-hover:scale-105">
                 <svg viewBox="0 0 32 32" className="h-full w-full fill-none stroke-current" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -71,7 +145,7 @@ export function Sidebar({ mobileOpen, onCloseMobile, onLaunchCampaign }: Sidebar
                 </svg>
               </span>
               <span className="leading-tight">
-                <span className="block text-[17px] font-extrabold tracking-[-0.03em] text-white">HomeLink™</span>
+                <span className="block text-[17px] font-extrabold tracking-[-0.03em] text-white">Everlia™</span>
                 <span className="block text-[8px] font-bold tracking-[0.14em] text-[#C4EBF2] uppercase">Clients For Life</span>
               </span>
             </Link>
@@ -96,11 +170,40 @@ export function Sidebar({ mobileOpen, onCloseMobile, onLaunchCampaign }: Sidebar
             </button>
           </div>
 
+          {sessionReady &&
+          canUseMemberOrganizations &&
+          memberships.length > 0 ? (
+            <div className="mt-4 space-y-1.5">
+              <div className="px-1 text-[10px] font-bold uppercase tracking-wider text-[#C4EBF2]/60">
+                Active organization
+              </div>
+              <select
+                value={activeOrganizationId ?? ""}
+                disabled={setActiveOrganization.isPending}
+                onChange={(e) => handleOrgChange(e.target.value)}
+                className="w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs font-semibold text-white outline-none focus:border-[#38B2D1] disabled:cursor-wait disabled:opacity-60"
+              >
+                {memberships.map((membership) => (
+                  <option
+                    key={membership.id}
+                    value={membership.organization_id}
+                    className="text-[#0B1F3D]"
+                  >
+                    {membership.organization?.name ?? "Organization"}
+                    {membership.organization?.industry?.name
+                      ? ` · ${membership.organization.industry.name}`
+                      : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+
           <nav className="mt-6 space-y-1.5">
             <div className="px-3 text-[10px] font-bold uppercase tracking-wider text-[#C4EBF2]/60 mb-2">
               Main Menu
             </div>
-            {NAV_ITEMS.map((item) => {
+            {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
               return (
@@ -147,24 +250,30 @@ export function Sidebar({ mobileOpen, onCloseMobile, onLaunchCampaign }: Sidebar
               <div className="relative">
                 <img
                   src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=120&auto=format&fit=crop&q=80"
-                  alt="Sarah Jenkins Avatar"
+                  alt="User avatar"
                   className="h-9 w-9 rounded-xl object-cover ring-2 ring-[#38B2D1]"
                 />
                 <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[#0B1F3D] bg-emerald-500" />
               </div>
               <div className="text-left">
-                <div className="text-xs font-bold text-white leading-tight">Sarah Jenkins</div>
-                <div className="text-[10px] text-[#C4EBF2]/70">Compass Premier</div>
+                <div className="text-xs font-bold text-white leading-tight">
+                  {displayName || "Everlia User"}
+                </div>
+                <div className="text-[10px] text-[#C4EBF2]/70 truncate max-w-[120px]">
+                  {user?.email ?? "Member"}
+                </div>
               </div>
             </div>
 
-            <Link
-              href="/sign-in"
+            <button
+              type="button"
               title="Sign Out"
-              className="grid h-7 w-7 place-items-center rounded-lg text-[#C4EBF2]/70 hover:bg-white/10 hover:text-rose-400 transition-colors"
+              disabled={signOut.isPending}
+              onClick={() => signOut.mutate()}
+              className="grid h-7 w-7 place-items-center rounded-lg text-[#C4EBF2]/70 hover:bg-white/10 hover:text-rose-400 transition-colors disabled:opacity-60"
             >
               <LogOutIcon className="h-4 w-4" />
-            </Link>
+            </button>
           </div>
         </div>
       </aside>

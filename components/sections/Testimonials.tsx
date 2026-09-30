@@ -18,7 +18,7 @@ const testimonials = [
     role: "Team Lead, Austin, TX"
   },
   {
-    quote: "HomeLink gives our agents a simple, consistent way to stay visible without adding more admin work.",
+    quote: "Everlia gives our agents a simple, consistent way to stay visible without adding more admin work.",
     name: "Maya K.",
     role: "Broker, Phoenix, AZ"
   },

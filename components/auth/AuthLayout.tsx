@@ -35,7 +35,7 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
             <div className="mb-6">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-[#C4EBF2] bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-[#38B2D1] shadow-xs">
                 <SparklesIcon className="h-3.5 w-3.5" />
-                HomeLink Portal
+                Everlia Portal
               </span>
               <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-[#0B1F3D] sm:text-4xl">
                 {title}
@@ -50,7 +50,7 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
         </div>
 
         <div className="text-center text-xs text-[#557393] lg:text-left">
-          © {new Date().getFullYear()} HomeLink™ Technologies Inc. All rights reserved.
+          © {new Date().getFullYear()} Everlia™ Technologies Inc. All rights reserved.
         </div>
       </div>
 
@@ -102,7 +102,7 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
 
             <div className="mt-8 rounded-2xl border border-white/10 bg-black/20 p-4 backdrop-blur-md">
               <p className="text-xs italic leading-relaxed text-white/80">
-                &ldquo;HomeLink transformed how our brokerage keeps in touch with past clients. The direct mail postcards sent automatically got us 14 repeat listings this quarter alone!&rdquo;
+                &ldquo;Everlia transformed how our brokerage keeps in touch with past clients. The direct mail postcards sent automatically got us 14 repeat listings this quarter alone!&rdquo;
               </p>
               <div className="mt-3 flex items-center justify-between text-[11px] font-semibold text-[#43c5e6]">
                 <span>— Sarah Jenkins, Principal Broker</span>
