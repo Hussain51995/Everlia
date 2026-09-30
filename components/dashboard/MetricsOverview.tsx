@@ -67,7 +67,7 @@ export function MetricsOverview() {
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, delay: idx * 0.08 }}
-            className="group relative overflow-hidden rounded-3xl border border-[#C4EBF2] bg-gradient-to-b from-white via-[#F0FAFC]/50 to-[#E2F5F8]/40 p-5 shadow-sm transition-all hover:border-[#38B2D1] hover:shadow-lg hover:shadow-[#38B2D1]/10"
+            className="group relative overflow-hidden rounded-3xl border border-[#C4EBF2] bg-white p-5 shadow-sm transition-all hover:border-[#38B2D1] hover:shadow-lg hover:shadow-[#38B2D1]/10"
           >
             <div className="flex items-center justify-between">
               <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#38B2D1]/10 text-[#38B2D1] transition-transform group-hover:scale-105">
