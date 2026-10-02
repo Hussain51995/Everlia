@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { JoinOrganizationPanel } from "@/components/dashboard/JoinOrganizationPanel";
 import { ThemeLoader } from "@/components/ui/ThemeLoader";
+import { RefetchButton } from "@/components/ui/RefetchButton";
 import { useSession } from "@/hooks/auth";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -37,14 +38,20 @@ export default function JoinOrganizationPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      <div>
-        <h1 className="text-2xl font-extrabold text-[#0B1F3D]">
-          Join organization
-        </h1>
-        <p className="mt-1 text-sm text-[#557393]">
-          Add another organization to your account. You can switch between them
-          from the sidebar.
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-extrabold text-[#0B1F3D]">
+            Join organization
+          </h1>
+          <p className="mt-1 text-sm text-[#557393]">
+            Add another organization to your account. You can switch between them
+            from the sidebar.
+          </p>
+        </div>
+        <RefetchButton
+          onClick={() => sessionQuery.refetch()}
+          isRefreshing={sessionQuery.isFetching && !sessionQuery.isLoading}
+        />
       </div>
       <JoinOrganizationPanel />
     </div>

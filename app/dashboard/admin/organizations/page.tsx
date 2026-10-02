@@ -1,15 +1,20 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { AdminIndustriesPanel } from "@/components/dashboard/AdminIndustriesPanel";
 import { AdminOrganizationsPanel } from "@/components/dashboard/AdminOrganizationsPanel";
 import { ThemeLoader } from "@/components/ui/ThemeLoader";
+import { RefetchButton } from "@/components/ui/RefetchButton";
 import { useSession } from "@/hooks/auth";
 import { useAuthStore } from "@/stores/auth-store";
+import { adminKeys } from "@/hooks/admin/keys";
 
 export default function AdminOrganizationsPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const [refreshing, setRefreshing] = useState(false);
   const sessionQuery = useSession();
   const isPlatformAdmin = useAuthStore((state) => state.isPlatformAdmin);
   const sessionReady = useAuthStore((state) => state.sessionReady);
@@ -21,6 +26,16 @@ export default function AdminOrganizationsPage() {
     }
   }, [isPlatformAdmin, router, sessionQuery.isLoading, sessionReady]);
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await queryClient.invalidateQueries({ queryKey: adminKeys.all });
+      await sessionQuery.refetch();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   if (!sessionReady || sessionQuery.isLoading || !isPlatformAdmin) {
     return (
       <div className="grid min-h-[40vh] place-items-center rounded-3xl border border-[#C4EBF2] bg-white p-8">
@@ -31,6 +46,9 @@ export default function AdminOrganizationsPage() {
 
   return (
     <div className="space-y-10">
+      <div className="flex justify-end">
+        <RefetchButton onClick={handleRefresh} isRefreshing={refreshing} />
+      </div>
       <AdminIndustriesPanel />
       <AdminOrganizationsPanel />
     </div>

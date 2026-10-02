@@ -16,6 +16,7 @@ import type {
 } from "@/lib/validations/auth";
 import { useAuthStore } from "@/stores/auth-store";
 import { authKeys } from "@/hooks/auth/keys";
+import { orgScopedKeys } from "@/hooks/cards/keys";
 
 type SignInResponse = {
   session: SessionPayload;
@@ -99,6 +100,9 @@ export function useJoinOrganization() {
         queryClient.setQueryData(authKeys.session(), data.session);
       }
       queryClient.invalidateQueries({ queryKey: authKeys.session() });
+      orgScopedKeys.forEach((key) => {
+        void queryClient.invalidateQueries({ queryKey: [...key] });
+      });
       resetSignupWizard();
       router.refresh();
     },
@@ -118,12 +122,17 @@ export function useSetActiveOrganization() {
           body: input,
         }
       ),
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       if (data.session) {
         setSession(data.session);
         queryClient.setQueryData(authKeys.session(), data.session);
       }
-      queryClient.invalidateQueries({ queryKey: authKeys.session() });
+      await queryClient.invalidateQueries({ queryKey: authKeys.session() });
+      await Promise.all(
+        orgScopedKeys.map((key) =>
+          queryClient.invalidateQueries({ queryKey: [...key] })
+        )
+      );
     },
   });
 }
