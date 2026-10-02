@@ -11,7 +11,7 @@ export async function generateQrPngBuffer(
     errorCorrectionLevel: "M",
     color: {
       dark: "#0B1F3D",
-      light: "#FFFFFF",
+      light: "#00000000",
     },
   });
 }

@@ -4,6 +4,28 @@ export const POSTCARD_WIDTH = 1800;
 export const POSTCARD_HEIGHT = 1200;
 export const POSTCARD_DPI = 300;
 
+export const BACK_QR_LAYOUT = {
+  size: 200,
+  qrX: 80,
+  qrY: 850,
+  brandX: 320, 
+  brandY: 850,
+} as const;
+
+
+export function normalizeBackQrFields(fields: DesignField[]): DesignField[] {
+  const { size, qrX, qrY, brandX, brandY } = BACK_QR_LAYOUT;
+  return fields.map((field) => {
+    if (field.key === "qr_code" && field.type === "qr") {
+      return { ...field, x: qrX, y: qrY, size, width: size, height: size };
+    }
+    if (field.key === "company_logo" && field.type === "image") {
+      return { ...field, x: brandX, y: brandY, width: size, height: size };
+    }
+    return field;
+  });
+}
+
 export function defaultDesignConfig(
   frontFields: DesignField[],
   backFields: DesignField[]

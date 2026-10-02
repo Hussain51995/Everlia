@@ -1,9 +1,119 @@
 import sharp, { type OverlayOptions } from "sharp";
 import { PDFDocument } from "pdf-lib";
+import type { Font } from "opentype.js";
 import type { DesignConfig, DesignField, GreetingCardFieldValues } from "@/lib/types/cards";
 import { generateQrPngBuffer } from "@/lib/artwork/qr";
-import { escapeXml, wrapText } from "@/lib/artwork/types";
+import { escapeXml, wrapText, normalizeBackQrFields } from "@/lib/artwork/types";
 import { getAppUrl } from "@/lib/app-url";
+
+type OpenTypeParse = (buffer: ArrayBuffer) => Font;
+
+let parseOpenType: OpenTypeParse | null = null;
+let caveatFont: Font | null = null;
+
+async function getParseOpenType(): Promise<OpenTypeParse> {
+  if (parseOpenType) return parseOpenType;
+
+  const mod = (await import("opentype.js")) as {
+    parse?: OpenTypeParse;
+    default?: { parse?: OpenTypeParse };
+  };
+  const parseFn = mod.parse ?? mod.default?.parse;
+  if (!parseFn) {
+    throw new Error("opentype.js parse() is unavailable");
+  }
+  parseOpenType = parseFn;
+  return parseFn;
+}
+
+async function getCaveatFont(): Promise<Font> {
+  if (caveatFont) return caveatFont;
+
+  const fs = await import("fs/promises");
+  const path = await import("path");
+  const fontPath = path.join(process.cwd(), "public", "fonts", "Caveat-Bold.ttf");
+  const fontBuf = await fs.readFile(fontPath);
+  const ab = fontBuf.buffer.slice(
+    fontBuf.byteOffset,
+    fontBuf.byteOffset + fontBuf.byteLength
+  );
+  const parse = await getParseOpenType();
+  caveatFont = parse(ab);
+  return caveatFont;
+}
+
+function usesCursiveFont(field: DesignField): boolean {
+  if (field.key === "customer_name") return true;
+  const family = field.fontFamily?.toLowerCase() ?? "";
+  return family.includes("caveat") || family.includes("cursive");
+}
+
+function wrapTextByWidth(
+  font: Font,
+  text: string,
+  fontSize: number,
+  maxWidth: number,
+  maxLines: number
+): string[] {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let current = "";
+
+  for (const word of words) {
+    const next = current ? `${current} ${word}` : word;
+    const width = font.getAdvanceWidth(next, fontSize);
+    if (width > maxWidth && current) {
+      lines.push(current);
+      current = word;
+      if (lines.length >= maxLines) break;
+    } else {
+      current = next;
+    }
+  }
+
+  if (lines.length < maxLines && current) lines.push(current);
+  return lines.slice(0, maxLines);
+}
+
+
+async function cursiveTextSvgOverlay(
+  width: number,
+  height: number,
+  field: DesignField,
+  value: string
+): Promise<Buffer> {
+  const font = await getCaveatFont();
+  const fontSize = field.fontSize ?? 36;
+  const color = field.color ?? "#0B1F3D";
+  const align = field.align ?? "left";
+  const maxLines = field.maxLines ?? 3;
+  const lineHeightMultiplier = field.lineHeight ?? 1.25;
+  const boxWidth = field.width ?? width - field.x;
+  const lineHeight = fontSize * lineHeightMultiplier;
+
+  const displayValue =
+    field.textTransform === "uppercase" ? value.toUpperCase() : value;
+  const lines = wrapTextByWidth(font, displayValue, fontSize, boxWidth, maxLines);
+
+  const paths = lines
+    .map((line, index) => {
+      const lineWidth = font.getAdvanceWidth(line, fontSize);
+      let x = field.x;
+      if (align === "center") x = field.x + (boxWidth - lineWidth) / 2;
+      else if (align === "right") x = field.x + boxWidth - lineWidth;
+
+      const y = field.y + fontSize + index * lineHeight;
+      const path = font.getPath(line, x, y, fontSize);
+      return `<path d="${path.toPathData(2)}" fill="${color}"/>`;
+    })
+    .join("\n  ");
+
+  const svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+  ${paths}
+</svg>`;
+
+  return Buffer.from(svg);
+}
 
 async function fetchBuffer(url: string): Promise<Buffer> {
   const fs = await import("fs/promises");
@@ -37,21 +147,30 @@ async function fetchBuffer(url: string): Promise<Buffer> {
   return fs.readFile(filePath);
 }
 
-function textSvgOverlay(
+async function textSvgOverlay(
   width: number,
   height: number,
   field: DesignField,
   value: string
-): Buffer {
+): Promise<Buffer> {
+  if (usesCursiveFont(field)) {
+    return cursiveTextSvgOverlay(width, height, field, value);
+  }
+
   const fontSize = field.fontSize ?? 36;
   const color = field.color ?? "#0B1F3D";
   const align = field.align ?? "left";
   const fontWeight = field.fontWeight ?? "normal";
   const maxLines = field.maxLines ?? 3;
+  const lineHeightMultiplier = field.lineHeight ?? 1.25;
   const boxWidth = field.width ?? width - field.x;
   const avgCharWidth = fontSize * 0.55;
   const maxChars = Math.max(8, Math.floor(boxWidth / avgCharWidth));
-  const lines = wrapText(value, maxChars, maxLines);
+
+  const displayValue =
+    field.textTransform === "uppercase" ? value.toUpperCase() : value;
+
+  const lines = wrapText(displayValue, maxChars, maxLines);
 
   let anchor = "start";
   let textX = field.x;
@@ -63,7 +182,12 @@ function textSvgOverlay(
     textX = field.x + boxWidth;
   }
 
-  const lineHeight = fontSize * 1.25;
+  const lineHeight = fontSize * lineHeightMultiplier;
+  const letterSpacingAttr =
+    field.letterSpacing != null ? ` letter-spacing="${field.letterSpacing}"` : "";
+  const fontFamilyAttr = field.fontFamily ?? "Helvetica, Arial, sans-serif";
+  const fontStyleAttr = field.fontStyle ? ` font-style="${field.fontStyle}"` : "";
+
   const tspans = lines
     .map((line, index) => {
       const dy = index === 0 ? 0 : lineHeight;
@@ -76,14 +200,33 @@ function textSvgOverlay(
     x="${textX}"
     y="${field.y + fontSize}"
     text-anchor="${anchor}"
-    font-family="Helvetica, Arial, sans-serif"
+    font-family="${fontFamilyAttr}"${fontStyleAttr}
     font-size="${fontSize}"
     font-weight="${fontWeight}"
-    fill="${color}"
+    fill="${color}"${letterSpacingAttr}
   >${tspans}</text>
 </svg>`;
 
   return Buffer.from(svg);
+}
+
+async function circularClip(imgBuf: Buffer, size: number): Promise<Buffer> {
+  const r = Math.floor(size / 2);
+  const mask = Buffer.from(
+    `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="${r}" cy="${r}" r="${r}" fill="white"/>
+    </svg>`
+  );
+
+  const resized = await sharp(imgBuf)
+    .resize(size, size, { fit: "cover", position: "centre" })
+    .png()
+    .toBuffer();
+
+  return sharp(resized)
+    .composite([{ input: mask, blend: "dest-in" }])
+    .png()
+    .toBuffer();
 }
 
 async function composeSide(options: {
@@ -104,7 +247,7 @@ async function composeSide(options: {
       const value = values[field.key]?.trim();
       if (!value) continue;
       composites.push({
-        input: textSvgOverlay(width, height, field, value),
+        input: await textSvgOverlay(width, height, field, value),
         top: 0,
         left: 0,
       });
@@ -117,15 +260,29 @@ async function composeSide(options: {
       const imgBuf = await fetchBuffer(imageUrl);
       const w = field.width ?? 200;
       const h = field.height ?? 200;
-      const resized = await sharp(imgBuf)
-        .resize(w, h, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
-        .png()
-        .toBuffer();
-      composites.push({
-        input: resized,
-        top: Math.round(field.y),
-        left: Math.round(field.x),
-      });
+
+      let finalBuf: Buffer;
+      if (field.shape === "circle") {
+        const diameter = Math.min(w, h);
+        finalBuf = await circularClip(imgBuf, diameter);
+        const offsetX = Math.round(field.x + (w - diameter) / 2);
+        const offsetY = Math.round(field.y + (h - diameter) / 2);
+        composites.push({
+          input: finalBuf,
+          top: offsetY,
+          left: offsetX,
+        });
+      } else {
+        finalBuf = await sharp(imgBuf)
+          .resize(w, h, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+          .png()
+          .toBuffer();
+        composites.push({
+          input: finalBuf,
+          top: Math.round(field.y),
+          left: Math.round(field.x),
+        });
+      }
       continue;
     }
 
@@ -172,7 +329,7 @@ export async function composePostcardArtwork(options: {
     }),
     composeSide({
       backgroundUrl: backBackgroundUrl,
-      fields: designConfig.back.fields,
+      fields: normalizeBackQrFields(designConfig.back.fields),
       values: fieldValues,
       qrToken,
       width,

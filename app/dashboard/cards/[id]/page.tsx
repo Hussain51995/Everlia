@@ -178,7 +178,6 @@ export default function CardDetailPage() {
           </div>
           <div className="aspect-[3/2] bg-[#F0FAFC]">
             {card.front_artwork_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={card.front_artwork_url}
                 alt="Front artwork"
@@ -197,7 +196,6 @@ export default function CardDetailPage() {
           </div>
           <div className="aspect-[3/2] bg-[#F0FAFC]">
             {card.back_artwork_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={card.back_artwork_url}
                 alt="Back artwork"
@@ -229,8 +227,31 @@ export default function CardDetailPage() {
             </dt>
             <dd className="text-base font-semibold text-[#0B1F3D]">
               {card.field_values?.sender_name || "—"}
+              {card.field_values?.sender_title && (
+                <span className="ml-2 text-xs font-normal text-[#557393]">
+                  {card.field_values.sender_title}
+                </span>
+              )}
             </dd>
           </div>
+          {card.field_values?.phone && (
+            <div className="space-y-1.5">
+              <dt className="text-xs font-bold uppercase tracking-wider text-[#557393]">Phone</dt>
+              <dd className="text-sm text-[#0B1F3D]">{card.field_values.phone}</dd>
+            </div>
+          )}
+          {card.field_values?.email_address && (
+            <div className="space-y-1.5">
+              <dt className="text-xs font-bold uppercase tracking-wider text-[#557393]">Email</dt>
+              <dd className="text-sm text-[#0B1F3D]">{card.field_values.email_address}</dd>
+            </div>
+          )}
+          {card.field_values?.website && (
+            <div className="space-y-1.5">
+              <dt className="text-xs font-bold uppercase tracking-wider text-[#557393]">Website</dt>
+              <dd className="text-sm text-[#38B2D1]">{card.field_values.website}</dd>
+            </div>
+          )}
           <div className="space-y-1.5 sm:col-span-2">
             <dt className="text-xs font-bold uppercase tracking-wider text-[#557393]">
               Message
@@ -239,6 +260,12 @@ export default function CardDetailPage() {
               {card.field_values?.personal_message || "—"}
             </dd>
           </div>
+          {card.field_values?.footer_note && (
+            <div className="space-y-1.5 sm:col-span-2">
+              <dt className="text-xs font-bold uppercase tracking-wider text-[#557393]">Footer note</dt>
+              <dd className="text-xs font-bold uppercase tracking-widest text-[#557393]">{card.field_values.footer_note}</dd>
+            </div>
+          )}
         </dl>
 
         <div className="mt-7 flex flex-wrap items-center gap-3">

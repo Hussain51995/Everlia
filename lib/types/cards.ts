@@ -42,6 +42,12 @@ export type DesignField = {
   label?: string;
   required?: boolean;
   side?: "front" | "back";
+  shape?: "circle" | "rect";
+  letterSpacing?: number;
+  textTransform?: "uppercase" | "none";
+  lineHeight?: number;
+  fontFamily?: string;
+  fontStyle?: "normal" | "italic";
 };
 
 export type DesignConfig = {
@@ -90,6 +96,11 @@ export type GreetingCardFieldValues = {
   customer_name?: string;
   personal_message?: string;
   sender_name?: string;
+  sender_title?: string;
+  phone?: string;
+  email_address?: string;
+  website?: string;
+  footer_note?: string;
   company_logo?: string;
   profile_image?: string;
   [key: string]: string | undefined;
