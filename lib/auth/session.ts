@@ -7,6 +7,8 @@ import type {
   SessionPayload,
 } from "@/lib/types/auth";
 
+export { getAppUrl } from "@/lib/app-url";
+
 type MembershipRow = OrganizationMembership & {
   organization?: {
     id: string;
@@ -124,11 +126,4 @@ export async function getSessionPayload(): Promise<SessionPayload | null> {
     isPlatformAdmin: false,
     canUseMemberOrganizations: true,
   };
-}
-
-export function getAppUrl() {
-  return (
-    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
-    "http://localhost:3000"
-  );
 }

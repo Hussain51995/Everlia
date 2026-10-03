@@ -40,7 +40,8 @@ app/palette.scss.download
 *.download
 
 # supabase-schema
-supabase
+supabase/migrations
+supabase/*.md
 
 # documentation
 docs

@@ -8,7 +8,6 @@ import {
   UsersIcon,
   SendIcon,
   ChartIcon,
-  CalendarIcon,
   GiftIcon,
   LogOutIcon,
   CloseIcon,
@@ -33,20 +32,19 @@ function SettingsHelperIcon(props: React.SVGProps<SVGSVGElement>) {
 
 const NAV_ITEMS = [
   { name: "Overview", href: "/dashboard", icon: LayoutDashboardIcon, badge: null },
-  { name: "Clients & Contacts", href: "#clients", icon: UsersIcon, badge: "2,845" },
-  { name: "Mail Campaigns", href: "#campaigns", icon: SendIcon, badge: "Active" },
-  { name: "Analytics & ROI", href: "#analytics", icon: ChartIcon, badge: null },
-  { name: "Automations Calendar", href: "#calendar", icon: CalendarIcon, badge: "12 Pending" },
-  { name: "Gifts & Touchpoints", href: "#gifts", icon: GiftIcon, badge: null },
+  { name: "Templates", href: "/dashboard/templates", icon: GiftIcon, badge: null },
+  { name: "My Cards", href: "/dashboard/cards", icon: SendIcon, badge: null },
+  { name: "Customers", href: "/dashboard/customers", icon: UsersIcon, badge: null },
+  { name: "Responses", href: "/dashboard/responses", icon: ChartIcon, badge: null },
 ];
 
 interface SidebarProps {
   mobileOpen: boolean;
   onCloseMobile: () => void;
-  onLaunchCampaign: () => void;
+  onSendCard: () => void;
 }
 
-export function Sidebar({ mobileOpen, onCloseMobile, onLaunchCampaign }: SidebarProps) {
+export function Sidebar({ mobileOpen, onCloseMobile, onSendCard }: SidebarProps) {
   const pathname = usePathname();
   const signOut = useSignOut();
   const setActiveOrganization = useSetActiveOrganization();
@@ -161,12 +159,12 @@ export function Sidebar({ mobileOpen, onCloseMobile, onLaunchCampaign }: Sidebar
             <button
               onClick={() => {
                 onCloseMobile();
-                onLaunchCampaign();
+                onSendCard();
               }}
               className="w-full flex items-center justify-center gap-2 rounded-2xl bg-[#38B2D1] py-3 text-xs font-bold text-white shadow-lg shadow-[#38B2D1]/25 transition-all hover:bg-[#43c5e6] active:scale-[0.98]"
             >
               <SparklesIcon className="h-4 w-4" />
-              <span>Launch New Campaign</span>
+              <span>Send a Card</span>
             </button>
           </div>
 
@@ -205,7 +203,11 @@ export function Sidebar({ mobileOpen, onCloseMobile, onLaunchCampaign }: Sidebar
             </div>
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive = pathname === item.href;
+              const isActive =
+                item.href === "/dashboard"
+                  ? pathname === "/dashboard"
+                  : pathname === item.href ||
+                    pathname.startsWith(`${item.href}/`);
               return (
                 <Link
                   key={item.name}
