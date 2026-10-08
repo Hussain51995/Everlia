@@ -126,8 +126,12 @@ export function useCard(id: string | null) {
     queryKey: cardKeys.detail(id ?? "", organizationId),
     enabled: Boolean(id) && Boolean(organizationId),
     queryFn: async () => {
-      const data = await apiClient<{ card: GreetingCard }>(`/api/cards/${id}`);
-      return data.card;
+      const data = await apiClient<{
+        card: GreetingCard;
+        qrToken: string | null;
+        respondUrl: string | null;
+      }>(`/api/cards/${id}`);
+      return data;
     },
   });
 }
@@ -186,6 +190,7 @@ export function useGenerateArtwork() {
         card: GreetingCard;
         artwork: { frontUrl: string; backUrl: string; pdfUrl?: string };
         qrToken: string;
+        respondUrl: string;
       }>(`/api/cards/${id}/artwork`, { method: "POST" }),
     onSuccess: (_data, id) => {
       queryClient.invalidateQueries({

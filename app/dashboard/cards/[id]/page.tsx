@@ -20,7 +20,9 @@ export default function CardDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const id = params.id;
-  const { data: card, isLoading, error, refetch, isFetching } = useCard(id);
+  const { data, isLoading, error, refetch, isFetching } = useCard(id);
+  const card = data?.card;
+  const respondUrl = data?.respondUrl ?? null;
   const { data: statusData, refetch: refetchStatus } = useCardStatus(id);
   const generateArtwork = useGenerateArtwork();
   const sendCard = useSendCard();
@@ -266,6 +268,44 @@ export default function CardDetailPage() {
               <dd className="text-xs font-bold uppercase tracking-widest text-[#557393]">{card.field_values.footer_note}</dd>
             </div>
           )}
+          {respondUrl ? (
+            <div className="space-y-1.5 sm:col-span-2">
+              <dt className="text-xs font-bold uppercase tracking-wider text-[#557393]">
+                QR link
+              </dt>
+              <dd className="flex flex-wrap items-center gap-2">
+                <a
+                  href={respondUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="break-all text-sm font-medium text-[#38B2D1] hover:underline"
+                >
+                  {respondUrl}
+                </a>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(respondUrl);
+                      showToast({
+                        tone: "success",
+                        title: "QR link copied",
+                      });
+                    } catch {
+                      showToast({
+                        tone: "error",
+                        title: "Copy failed",
+                        description: "Could not copy the QR link.",
+                      });
+                    }
+                  }}
+                  className="rounded-lg border border-[#C4EBF2] px-2.5 py-1 text-[11px] font-bold text-[#0B1F3D] hover:bg-[#F0FAFC]"
+                >
+                  Copy
+                </button>
+              </dd>
+            </div>
+          ) : null}
         </dl>
 
         <div className="mt-7 flex flex-wrap items-center gap-3">
