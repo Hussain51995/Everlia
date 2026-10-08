@@ -74,8 +74,7 @@ export class PostGridProvider implements MailProviderService {
     const body = {
       to: toPostGridContact(input.to),
       from: toPostGridContact(input.from),
-      front: input.frontUrl,
-      back: input.backUrl,
+      pdf: input.pdfUrl,
       size: input.size ?? "6x4",
       description: input.description,
       metadata: input.metadata,

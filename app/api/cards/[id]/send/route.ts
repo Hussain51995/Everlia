@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { requireActiveOrganization } from "@/lib/cards/require-org";
 import { getMailProvider, resolveProviderId } from "@/lib/mail/factory";
-import { resolvePublicAssetUrl } from "@/lib/artwork/export";
+import { resolvePostcardPdfUrl } from "@/lib/artwork/export";
 import type { GreetingCard, OrganizationBranding } from "@/lib/types/cards";
 
 type Params = { params: { id: string } };
@@ -127,9 +127,10 @@ export async function POST(_request: Request, { params }: Params) {
       );
     }
 
+    const pdfUrl = resolvePostcardPdfUrl(card.front_artwork_url);
+
     const sendResult = await provider.sendCard({
-      frontUrl: resolvePublicAssetUrl(card.front_artwork_url),
-      backUrl: resolvePublicAssetUrl(card.back_artwork_url),
+      pdfUrl,
       to: {
         firstName: customer.first_name,
         lastName: customer.last_name,
@@ -158,6 +159,7 @@ export async function POST(_request: Request, { params }: Params) {
       internal_status: "submitted",
       provider_status_raw: sendResult.providerStatus,
       request_payload: {
+        pdfUrl,
         frontUrl: card.front_artwork_url,
         backUrl: card.back_artwork_url,
         environment,

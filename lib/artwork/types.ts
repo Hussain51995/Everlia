@@ -4,6 +4,11 @@ export const POSTCARD_WIDTH = 1800;
 export const POSTCARD_HEIGHT = 1200;
 export const POSTCARD_DPI = 300;
 
+export const POSTCARD_TRIM_INCHES = { width: 6, height: 4 } as const;
+
+export const POSTCARD_PDF_WIDTH_PT = 6.25 * 72; 
+export const POSTCARD_PDF_HEIGHT_PT = 4.25 * 72; 
+
 export const BACK_QR_LAYOUT = {
   size: 200,
   qrX: 80,
