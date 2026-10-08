@@ -73,7 +73,9 @@ export async function GET(_request: Request, { params }: Params) {
       field_values: {
         customer_name?: string;
         sender_name?: string;
+        sender_title?: string;
         personal_message?: string;
+        profile_image?: string;
       };
       template?:
         | { name: string; category: string }
@@ -124,6 +126,8 @@ export async function GET(_request: Request, { params }: Params) {
         card.field_values?.customer_name?.split(" ")[0] ||
         "there",
       senderName: card.field_values?.sender_name || "your friend",
+      senderTitle: card.field_values?.sender_title?.trim() || null,
+      profileImageUrl: card.field_values?.profile_image?.trim() || null,
       occasionLabel: occasionLabelFromCategory(template?.category),
       personalMessage: card.field_values?.personal_message ?? null,
       organizationName: organization?.name ?? null,

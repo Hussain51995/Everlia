@@ -8,6 +8,7 @@ import {
   postcardPngsToPdf,
 } from "@/lib/artwork/compose";
 import { uploadCardArtwork } from "@/lib/artwork/export";
+import { getAppUrl } from "@/lib/app-url";
 import type { DesignConfig, GreetingCard, GreetingCardFieldValues } from "@/lib/types/cards";
 
 type Params = { params: { id: string } };
@@ -152,6 +153,7 @@ export async function POST(_request: Request, { params }: Params) {
         pdfUrl: uploaded.pdfUrl,
       },
       qrToken,
+      respondUrl: `${getAppUrl()}/respond/${qrToken}`,
     });
   } catch (error) {
     return apiError(

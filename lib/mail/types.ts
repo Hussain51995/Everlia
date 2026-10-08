@@ -13,8 +13,7 @@ export type MailAddress = {
 };
 
 export type SendCardInput = {
-  frontUrl: string;
-  backUrl: string;
+  pdfUrl: string;
   to: MailAddress;
   from: MailAddress;
   size?: "6x4" | "9x6" | "11x6";

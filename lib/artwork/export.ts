@@ -67,3 +67,11 @@ export function resolvePublicAssetUrl(url: string): string {
   }
   return `${getAppUrl()}/${url}`;
 }
+
+export function resolvePostcardPdfUrl(frontArtworkUrl: string): string {
+  const publicFront = resolvePublicAssetUrl(frontArtworkUrl);
+  if (publicFront.endsWith("/front.png")) {
+    return publicFront.replace(/\/front\.png$/, "/card.pdf");
+  }
+  return publicFront.replace(/\/[^/?#]+(?=[?#]|$)/, "/card.pdf");
+}

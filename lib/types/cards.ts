@@ -188,6 +188,8 @@ export type PublicRespondPayload = {
   token: string;
   customerFirstName: string;
   senderName: string;
+  senderTitle: string | null;
+  profileImageUrl: string | null;
   occasionLabel: string;
   personalMessage: string | null;
   organizationName: string | null;

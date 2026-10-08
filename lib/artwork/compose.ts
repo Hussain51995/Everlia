@@ -3,7 +3,13 @@ import { PDFDocument } from "pdf-lib";
 import type { Font } from "opentype.js";
 import type { DesignConfig, DesignField, GreetingCardFieldValues } from "@/lib/types/cards";
 import { generateQrPngBuffer } from "@/lib/artwork/qr";
-import { escapeXml, wrapText, normalizeBackQrFields } from "@/lib/artwork/types";
+import {
+  escapeXml,
+  wrapText,
+  normalizeBackQrFields,
+  POSTCARD_PDF_WIDTH_PT,
+  POSTCARD_PDF_HEIGHT_PT,
+} from "@/lib/artwork/types";
 import { getAppUrl } from "@/lib/app-url";
 
 type OpenTypeParse = (buffer: ArrayBuffer) => Font;
@@ -37,6 +43,8 @@ async function getCaveatFont(): Promise<Font> {
     fontBuf.byteOffset,
     fontBuf.byteOffset + fontBuf.byteLength
   );
+
+  
   const parse = await getParseOpenType();
   caveatFont = parse(ab);
   return caveatFont;
@@ -343,8 +351,8 @@ export async function composePostcardArtwork(options: {
 export async function postcardPngsToPdf(
   frontPng: Buffer,
   backPng: Buffer,
-  widthPt = 432,
-  heightPt = 288
+  widthPt = POSTCARD_PDF_WIDTH_PT,
+  heightPt = POSTCARD_PDF_HEIGHT_PT
 ): Promise<Buffer> {
   const pdf = await PDFDocument.create();
 

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   apiError,
   apiSuccess,
@@ -7,9 +8,15 @@ import {
 import { requireActiveOrganization } from "@/lib/cards/require-org";
 import { greetingCardUpdateSchema } from "@/lib/validations/cards";
 import { firstZodError } from "@/lib/validations/errors";
+import { getAppUrl } from "@/lib/app-url";
 import type { GreetingCard } from "@/lib/types/cards";
 
 type Params = { params: { id: string } };
+
+function respondUrlForToken(token: string | null | undefined) {
+  if (!token) return null;
+  return `${getAppUrl()}/respond/${token}`;
+}
 
 export async function GET(_request: Request, { params }: Params) {
   try {
@@ -38,7 +45,20 @@ export async function GET(_request: Request, { params }: Params) {
       return apiError({ code: "NOT_FOUND", message: "Card not found" }, 404);
     }
 
-    return apiSuccess({ card: data as GreetingCard });
+    const admin = createAdminClient();
+    const { data: qr } = await admin
+      .from("qr_tokens")
+      .select("token")
+      .eq("greeting_card_id", data.id)
+      .maybeSingle();
+
+    const qrToken = qr?.token ?? null;
+
+    return apiSuccess({
+      card: data as GreetingCard,
+      qrToken,
+      respondUrl: respondUrlForToken(qrToken),
+    });
   } catch (error) {
     return apiError(
       {
