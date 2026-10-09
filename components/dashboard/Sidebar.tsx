@@ -251,7 +251,7 @@ export function Sidebar({ mobileOpen, onCloseMobile, onSendCard }: SidebarProps)
             <div className="flex items-center gap-3">
               <div className="relative">
                 <img
-                  src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=120&auto=format&fit=crop&q=80"
+                  src="/avatars/avatar-01.webp"
                   alt="User avatar"
                   className="h-9 w-9 rounded-xl object-cover ring-2 ring-[#38B2D1]"
                 />
