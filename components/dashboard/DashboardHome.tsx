@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { MetricsOverview } from "@/components/dashboard/MetricsOverview";
-import { RevenueAreaChart } from "@/components/dashboard/charts/RevenueAreaChart";
 import { LeadFunnelBarChart } from "@/components/dashboard/charts/LeadFunnelBarChart";
 import { CampaignPieChart } from "@/components/dashboard/charts/CampaignPieChart";
 import { RecentActivityTable } from "@/components/dashboard/RecentActivityTable";
@@ -14,6 +13,7 @@ import { RefetchButton } from "@/components/ui/RefetchButton";
 import { useAuthStore } from "@/stores/auth-store";
 import { orgScopedKeys } from "@/hooks/cards/keys";
 import { authKeys } from "@/hooks/auth/keys";
+import { useDashboardStats } from "@/hooks/dashboard/use-dashboard-stats";
 
 export function DashboardHome() {
   const queryClient = useQueryClient();
@@ -22,6 +22,8 @@ export function DashboardHome() {
   const membership = useAuthStore((state) => state.membership);
   const isPlatformAdmin = useAuthStore((state) => state.isPlatformAdmin);
   const sessionReady = useAuthStore((state) => state.sessionReady);
+
+  const { stats, isLoading: statsLoading } = useDashboardStats();
 
   const firstName = profile?.first_name?.trim() || "there";
   const orgName = membership?.organization?.name ?? "your organization";
@@ -54,7 +56,7 @@ export function DashboardHome() {
       <div className="space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex-1 rounded-3xl border border-[#C4EBF2] bg-[#0B1F3D] p-6 shadow-sm">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#C4EBF2] bg-white px-3 py-1 text-[11px] font-bold text-[#38B2D1] uppercase tracking-wider shadow-xs">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#C4EBF2] bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-[#38B2D1] shadow-xs">
               <SparklesIcon className="h-3.5 w-3.5" />
               Platform Admin
             </span>
@@ -77,6 +79,11 @@ export function DashboardHome() {
       </div>
     );
   }
+
+  const cardsThisMonthLabel =
+    stats.cardsThisMonth === 1
+      ? "1 card this month"
+      : `${stats.cardsThisMonth.toLocaleString()} cards this month`;
 
   return (
     <div className="space-y-6">
@@ -113,21 +120,31 @@ export function DashboardHome() {
           <RefetchButton onClick={handleRefresh} isRefreshing={refreshing} />
           <div className="flex items-center gap-2 rounded-2xl border border-[#C4EBF2] bg-white px-4 py-2 text-xs font-bold text-[#0B1F3D] shadow-xs">
             <CalendarIcon className="h-4 w-4 text-[#38B2D1]" />
-            <span>Q3 Campaign Cycle</span>
+            <span>{statsLoading ? "…" : cardsThisMonthLabel}</span>
           </div>
         </div>
       </div>
 
-      <MetricsOverview />
+      <MetricsOverview metrics={stats.metrics} isLoading={statsLoading} />
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         <div className="space-y-5 xl:col-span-2">
-          <RevenueAreaChart />
-          <RecentActivityTable />
+          <RecentActivityTable
+            activities={stats.activities}
+            isLoading={statsLoading}
+          />
         </div>
         <div className="space-y-5 xl:col-span-1">
-          <CampaignPieChart />
-          <LeadFunnelBarChart />
+          <CampaignPieChart
+            campaigns={stats.campaigns}
+            totalMailers={stats.totalMailers}
+            isLoading={statsLoading}
+          />
+          <LeadFunnelBarChart
+            funnel={stats.funnel}
+            overallConversionPercent={stats.overallConversionPercent}
+            isLoading={statsLoading}
+          />
         </div>
       </div>
     </div>

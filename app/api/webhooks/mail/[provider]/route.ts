@@ -9,9 +9,9 @@ export async function POST(request: Request, { params }: Params) {
   try {
     const slug = params.provider.toLowerCase();
     const { provider } = await getMailProvider(slug);
-    const body = await request.json().catch(() => null);
+    const rawBody = await request.text();
 
-    const result = await provider.handleWebhook(request.headers, body);
+    const result = await provider.handleWebhook(request.headers, rawBody);
     if (!result) {
       return apiSuccess({ ignored: true });
     }
@@ -60,11 +60,13 @@ export async function POST(request: Request, { params }: Params) {
       status: result.internalStatus,
     });
   } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Webhook handling failed";
+    console.error(`[mail-webhook/${params.provider}]`, message);
     return apiError(
       {
         code: "WEBHOOK_ERROR",
-        message:
-          error instanceof Error ? error.message : "Webhook handling failed",
+        message,
       },
       400
     );

@@ -7,11 +7,12 @@ import {
   BellIcon,
   PlusIcon,
   SparklesIcon,
-  ChevronDownIcon,
   CheckCircleIcon,
   MailIcon,
   BuildingIcon,
+  LogOutIcon,
 } from "@/components/ui/Icons";
+import { useSignOut } from "@/hooks/auth";
 import { useAuthStore } from "@/stores/auth-store";
 
 interface DashboardHeaderProps {
@@ -22,6 +23,7 @@ interface DashboardHeaderProps {
 export function DashboardHeader({ onOpenMobileSidebar, onSendCard }: DashboardHeaderProps) {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const signOut = useSignOut();
   const profile = useAuthStore((state) => state.profile);
   const membership = useAuthStore((state) => state.membership);
   const isPlatformAdmin = useAuthStore((state) => state.isPlatformAdmin);
@@ -169,16 +171,24 @@ export function DashboardHeader({ onOpenMobileSidebar, onSendCard }: DashboardHe
           )}
         </div>
 
-        <div className="flex items-center gap-2 rounded-xl border border-[#C4EBF2] bg-[#F0FAFC] p-1 pr-2.5">
+        <div className="flex items-center gap-1.5 rounded-xl border border-[#C4EBF2] bg-[#F0FAFC] p-1 pr-1.5">
           <img
-            src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=120&auto=format&fit=crop&q=80"
+            src="/avatars/avatar-01.webp"
             alt="User"
             className="h-7 w-7 rounded-lg object-cover"
           />
-          <span className="hidden md:inline-block text-xs font-bold text-[#0B1F3D]">
+          <span className="hidden md:inline-block text-xs font-bold text-[#0B1F3D] px-1">
             {displayName || "Member"}
           </span>
-          <ChevronDownIcon className="h-3.5 w-3.5 text-[#557393]" />
+          <button
+            type="button"
+            title="Sign Out"
+            disabled={signOut.isPending}
+            onClick={() => signOut.mutate()}
+            className="grid h-7 w-7 place-items-center rounded-lg text-[#557393] hover:bg-white hover:text-rose-500 transition-colors disabled:opacity-60"
+          >
+            <LogOutIcon className="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
     </header>
