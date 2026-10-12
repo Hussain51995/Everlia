@@ -1,3 +1,4 @@
+import { createHmac, timingSafeEqual } from "crypto";
 import type { MailProviderService } from "@/lib/mail/interface";
 import type {
   MailAddress,
@@ -9,6 +10,106 @@ import type {
 import { mapProviderStatus } from "@/lib/mail/status-map";
 
 const POSTGRID_BASE = "https://api.postgrid.com/print-mail/v1";
+
+function safeEqualHex(a: string, b: string): boolean {
+  try {
+    const bufA = Buffer.from(a, "utf8");
+    const bufB = Buffer.from(b, "utf8");
+    if (bufA.length !== bufB.length) return false;
+    return timingSafeEqual(bufA, bufB);
+  } catch {
+    return false;
+  }
+}
+
+function parseSignatureHeader(header: string | null): {
+  timestamp: string;
+  signature: string;
+} | null {
+  if (!header) return null;
+  const parts: Record<string, string> = {};
+  for (const segment of header.split(",")) {
+    const idx = segment.indexOf("=");
+    if (idx <= 0) continue;
+    const key = segment.slice(0, idx).trim();
+    const value = segment.slice(idx + 1).trim();
+    parts[key] = value;
+  }
+  if (!parts.t || !parts.v1) return null;
+  return { timestamp: parts.t, signature: parts.v1 };
+}
+
+function verifyJsonSignature(rawBody: string, headers: Headers, secret: string) {
+  const header =
+    headers.get("postgrid-signature") ||
+    headers.get("PostGrid-Signature") ||
+    headers.get("x-postgrid-signature");
+  const parsed = parseSignatureHeader(header);
+  if (!parsed) {
+    throw new Error("Missing or invalid PostGrid-Signature header");
+  }
+
+  const signedPayload = `${parsed.timestamp}.${rawBody}`;
+  const expected = createHmac("sha256", secret)
+    .update(signedPayload, "utf8")
+    .digest("hex");
+
+  if (!safeEqualHex(expected, parsed.signature)) {
+    throw new Error("Invalid PostGrid webhook signature");
+  }
+}
+
+function looksLikeJwt(rawBody: string): boolean {
+  const trimmed = rawBody.trim();
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) return false;
+  const parts = trimmed.split(".");
+  return parts.length === 3 && parts.every((p) => p.length > 0);
+}
+
+function decodePostGridJwt(token: string, secret: string): unknown {
+  const trimmed = token.trim();
+  const [headerB64, payloadB64, signatureB64] = trimmed.split(".");
+  if (!headerB64 || !payloadB64 || !signatureB64) {
+    throw new Error("Invalid PostGrid JWT webhook payload");
+  }
+
+  const expected = createHmac("sha256", secret)
+    .update(`${headerB64}.${payloadB64}`)
+    .digest("base64url");
+
+  if (!safeEqualHex(expected, signatureB64)) {
+    throw new Error("Invalid PostGrid JWT webhook signature");
+  }
+
+  try {
+    const json = Buffer.from(payloadB64, "base64url").toString("utf8");
+    return JSON.parse(json) as unknown;
+  } catch {
+    throw new Error("Failed to decode PostGrid JWT webhook payload");
+  }
+}
+
+type PostGridWebhookPayload = {
+  type?: string;
+  data?: { id?: string; status?: string };
+  id?: string;
+  status?: string;
+};
+
+function extractMailUpdate(body: unknown): {
+  providerMailId: string;
+  providerStatus: string;
+} | null {
+  const payload = body as PostGridWebhookPayload | null;
+  if (!payload || typeof payload !== "object") return null;
+
+  const data = payload.data ?? payload;
+  const providerMailId = data.id;
+  const providerStatus = data.status;
+
+  if (!providerMailId || !providerStatus) return null;
+  return { providerMailId, providerStatus };
+}
 
 function getApiKey() {
   const key = process.env.POSTGRID_API_KEY;
@@ -117,38 +218,39 @@ export class PostGridProvider implements MailProviderService {
 
   async handleWebhook(
     headers: Headers,
-    body: unknown
+    rawBody: string
   ): Promise<WebhookResult> {
-    const secret = process.env.POSTGRID_WEBHOOK_SECRET;
-    if (secret) {
-      const provided =
-        headers.get("x-postgrid-signature") ||
-        headers.get("x-webhook-secret") ||
-        headers.get("authorization")?.replace(/^Bearer\s+/i, "");
-      if (provided !== secret) {
-        throw new Error("Invalid PostGrid webhook signature");
+    const secret = process.env.POSTGRID_WEBHOOK_SECRET?.trim();
+    let body: unknown;
+
+    if (looksLikeJwt(rawBody)) {
+      if (!secret) {
+        throw new Error(
+          "POSTGRID_WEBHOOK_SECRET is required for JWT webhook payloads"
+        );
+      }
+      body = decodePostGridJwt(rawBody, secret);
+    } else {
+      if (secret) {
+        verifyJsonSignature(rawBody, headers, secret);
+      }
+
+      try {
+        body = rawBody ? (JSON.parse(rawBody) as unknown) : null;
+      } catch {
+        throw new Error("Invalid PostGrid webhook JSON body");
       }
     }
 
-    const payload = body as {
-      type?: string;
-      data?: { id?: string; status?: string };
-      id?: string;
-      status?: string;
-    };
-
-    const data = payload.data ?? payload;
-    const providerMailId = data.id;
-    const providerStatus = data.status;
-
-    if (!providerMailId || !providerStatus) {
+    const update = extractMailUpdate(body);
+    if (!update) {
       return null;
     }
 
     return {
-      providerMailId,
-      providerStatus,
-      internalStatus: mapProviderStatus(this.slug, providerStatus),
+      providerMailId: update.providerMailId,
+      providerStatus: update.providerStatus,
+      internalStatus: mapProviderStatus(this.slug, update.providerStatus),
       raw: body,
     };
   }

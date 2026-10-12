@@ -12,6 +12,6 @@ export interface MailProviderService {
   cancelMail(providerMailId: string): Promise<void>;
   handleWebhook(
     headers: Headers,
-    body: unknown
+    rawBody: string
   ): Promise<WebhookResult>;
 }
