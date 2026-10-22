@@ -32,21 +32,35 @@ async function getParseOpenType(): Promise<OpenTypeParse> {
   return parseFn;
 }
 
-async function getCaveatFont(): Promise<Font> {
-  if (caveatFont) return caveatFont;
-
+async function loadCaveatFontBuffer(): Promise<Buffer> {
   const fs = await import("fs/promises");
   const path = await import("path");
   const fontPath = path.join(process.cwd(), "public", "fonts", "Caveat-Bold.ttf");
-  const fontBuf = await fs.readFile(fontPath);
+
+  try {
+    return await fs.readFile(fontPath);
+  } catch {
+    const response = await fetch(`${getAppUrl()}/fonts/Caveat-Bold.ttf`);
+    if (!response.ok) {
+      throw new Error(
+        `Failed to load Caveat-Bold.ttf (local missing, HTTP ${response.status})`
+      );
+    }
+    return Buffer.from(await response.arrayBuffer());
+  }
+}
+
+async function getCaveatFont(): Promise<Font> {
+  if (caveatFont) return caveatFont;
+
+  const fontBuf = await loadCaveatFontBuffer();
   const ab = fontBuf.buffer.slice(
     fontBuf.byteOffset,
     fontBuf.byteOffset + fontBuf.byteLength
   );
 
-  
   const parse = await getParseOpenType();
-  caveatFont = parse(ab);
+  caveatFont = parse(ab as ArrayBuffer);
   return caveatFont;
 }
 
