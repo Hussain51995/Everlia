@@ -4,6 +4,9 @@ const nextConfig = {
   reactStrictMode: true,
   experimental: {
     serverComponentsExternalPackages: ["sharp"],
+    outputFileTracingIncludes: {
+      "/api/cards/[id]/artwork": ["./public/fonts/**/*"],
+    },
   },
 };
 export default nextConfig;
