@@ -4,8 +4,6 @@ import type { Font } from "opentype.js";
 import type { DesignConfig, DesignField, GreetingCardFieldValues } from "@/lib/types/cards";
 import { generateQrPngBuffer } from "@/lib/artwork/qr";
 import {
-  escapeXml,
-  wrapText,
   normalizeBackQrFields,
   POSTCARD_PDF_WIDTH_PT,
   POSTCARD_PDF_HEIGHT_PT,
@@ -14,8 +12,16 @@ import { getAppUrl } from "@/lib/app-url";
 
 type OpenTypeParse = (buffer: ArrayBuffer) => Font;
 
+type BundledFontId = "caveat-bold" | "noto-sans-regular" | "noto-sans-bold";
+
+const BUNDLED_FONT_FILES: Record<BundledFontId, string> = {
+  "caveat-bold": "Caveat-Bold.ttf",
+  "noto-sans-regular": "NotoSans-Regular.ttf",
+  "noto-sans-bold": "NotoSans-Bold.ttf",
+};
+
 let parseOpenType: OpenTypeParse | null = null;
-let caveatFont: Font | null = null;
+const fontCache = new Map<BundledFontId, Font>();
 
 async function getParseOpenType(): Promise<OpenTypeParse> {
   if (parseOpenType) return parseOpenType;
@@ -32,36 +38,38 @@ async function getParseOpenType(): Promise<OpenTypeParse> {
   return parseFn;
 }
 
-async function loadCaveatFontBuffer(): Promise<Buffer> {
+async function loadFontFileBuffer(filename: string): Promise<Buffer> {
   const fs = await import("fs/promises");
   const path = await import("path");
-  const fontPath = path.join(process.cwd(), "public", "fonts", "Caveat-Bold.ttf");
+  const fontPath = path.join(process.cwd(), "public", "fonts", filename);
 
   try {
     return await fs.readFile(fontPath);
   } catch {
-    const response = await fetch(`${getAppUrl()}/fonts/Caveat-Bold.ttf`);
+    const response = await fetch(`${getAppUrl()}/fonts/${filename}`);
     if (!response.ok) {
       throw new Error(
-        `Failed to load Caveat-Bold.ttf (local missing, HTTP ${response.status})`
+        `Failed to load ${filename} (local missing, HTTP ${response.status})`
       );
     }
     return Buffer.from(await response.arrayBuffer());
   }
 }
 
-async function getCaveatFont(): Promise<Font> {
-  if (caveatFont) return caveatFont;
+async function getBundledFont(id: BundledFontId): Promise<Font> {
+  const cached = fontCache.get(id);
+  if (cached) return cached;
 
-  const fontBuf = await loadCaveatFontBuffer();
+  const fontBuf = await loadFontFileBuffer(BUNDLED_FONT_FILES[id]);
   const ab = fontBuf.buffer.slice(
     fontBuf.byteOffset,
     fontBuf.byteOffset + fontBuf.byteLength
   );
 
   const parse = await getParseOpenType();
-  caveatFont = parse(ab as ArrayBuffer);
-  return caveatFont;
+  const font = parse(ab as ArrayBuffer);
+  fontCache.set(id, font);
+  return font;
 }
 
 function usesCursiveFont(field: DesignField): boolean {
@@ -70,12 +78,51 @@ function usesCursiveFont(field: DesignField): boolean {
   return family.includes("caveat") || family.includes("cursive");
 }
 
+function resolveBundledFontId(field: DesignField): BundledFontId {
+  if (usesCursiveFont(field)) return "caveat-bold";
+  if (field.fontWeight === "bold") return "noto-sans-bold";
+  return "noto-sans-regular";
+}
+
+function measureTextWidth(
+  font: Font,
+  text: string,
+  fontSize: number,
+  letterSpacing = 0
+): number {
+  const base = font.getAdvanceWidth(text, fontSize);
+  if (!letterSpacing || text.length <= 1) return base;
+  return base + letterSpacing * (text.length - 1);
+}
+
+function textToPathData(
+  font: Font,
+  text: string,
+  x: number,
+  y: number,
+  fontSize: number,
+  letterSpacing = 0
+): string {
+  if (!letterSpacing) {
+    return font.getPath(text, x, y, fontSize).toPathData(2);
+  }
+
+  let cursor = x;
+  const parts: string[] = [];
+  for (const char of text) {
+    parts.push(font.getPath(char, cursor, y, fontSize).toPathData(2));
+    cursor += font.getAdvanceWidth(char, fontSize) + letterSpacing;
+  }
+  return parts.join(" ");
+}
+
 function wrapTextByWidth(
   font: Font,
   text: string,
   fontSize: number,
   maxWidth: number,
-  maxLines: number
+  maxLines: number,
+  letterSpacing = 0
 ): string[] {
   const words = text.trim().split(/\s+/).filter(Boolean);
   const lines: string[] = [];
@@ -83,7 +130,7 @@ function wrapTextByWidth(
 
   for (const word of words) {
     const next = current ? `${current} ${word}` : word;
-    const width = font.getAdvanceWidth(next, fontSize);
+    const width = measureTextWidth(font, next, fontSize, letterSpacing);
     if (width > maxWidth && current) {
       lines.push(current);
       current = word;
@@ -95,46 +142,6 @@ function wrapTextByWidth(
 
   if (lines.length < maxLines && current) lines.push(current);
   return lines.slice(0, maxLines);
-}
-
-
-async function cursiveTextSvgOverlay(
-  width: number,
-  height: number,
-  field: DesignField,
-  value: string
-): Promise<Buffer> {
-  const font = await getCaveatFont();
-  const fontSize = field.fontSize ?? 36;
-  const color = field.color ?? "#0B1F3D";
-  const align = field.align ?? "left";
-  const maxLines = field.maxLines ?? 3;
-  const lineHeightMultiplier = field.lineHeight ?? 1.25;
-  const boxWidth = field.width ?? width - field.x;
-  const lineHeight = fontSize * lineHeightMultiplier;
-
-  const displayValue =
-    field.textTransform === "uppercase" ? value.toUpperCase() : value;
-  const lines = wrapTextByWidth(font, displayValue, fontSize, boxWidth, maxLines);
-
-  const paths = lines
-    .map((line, index) => {
-      const lineWidth = font.getAdvanceWidth(line, fontSize);
-      let x = field.x;
-      if (align === "center") x = field.x + (boxWidth - lineWidth) / 2;
-      else if (align === "right") x = field.x + boxWidth - lineWidth;
-
-      const y = field.y + fontSize + index * lineHeight;
-      const path = font.getPath(line, x, y, fontSize);
-      return `<path d="${path.toPathData(2)}" fill="${color}"/>`;
-    })
-    .join("\n  ");
-
-  const svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-  ${paths}
-</svg>`;
-
-  return Buffer.from(svg);
 }
 
 async function fetchBuffer(url: string): Promise<Buffer> {
@@ -175,58 +182,42 @@ async function textSvgOverlay(
   field: DesignField,
   value: string
 ): Promise<Buffer> {
-  if (usesCursiveFont(field)) {
-    return cursiveTextSvgOverlay(width, height, field, value);
-  }
-
+  const font = await getBundledFont(resolveBundledFontId(field));
   const fontSize = field.fontSize ?? 36;
   const color = field.color ?? "#0B1F3D";
   const align = field.align ?? "left";
-  const fontWeight = field.fontWeight ?? "normal";
   const maxLines = field.maxLines ?? 3;
   const lineHeightMultiplier = field.lineHeight ?? 1.25;
   const boxWidth = field.width ?? width - field.x;
-  const avgCharWidth = fontSize * 0.55;
-  const maxChars = Math.max(8, Math.floor(boxWidth / avgCharWidth));
+  const lineHeight = fontSize * lineHeightMultiplier;
+  const letterSpacing = field.letterSpacing ?? 0;
 
   const displayValue =
     field.textTransform === "uppercase" ? value.toUpperCase() : value;
+  const lines = wrapTextByWidth(
+    font,
+    displayValue,
+    fontSize,
+    boxWidth,
+    maxLines,
+    letterSpacing
+  );
 
-  const lines = wrapText(displayValue, maxChars, maxLines);
-
-  let anchor = "start";
-  let textX = field.x;
-  if (align === "center") {
-    anchor = "middle";
-    textX = field.x + boxWidth / 2;
-  } else if (align === "right") {
-    anchor = "end";
-    textX = field.x + boxWidth;
-  }
-
-  const lineHeight = fontSize * lineHeightMultiplier;
-  const letterSpacingAttr =
-    field.letterSpacing != null ? ` letter-spacing="${field.letterSpacing}"` : "";
-  const fontFamilyAttr = field.fontFamily ?? "Helvetica, Arial, sans-serif";
-  const fontStyleAttr = field.fontStyle ? ` font-style="${field.fontStyle}"` : "";
-
-  const tspans = lines
+  const paths = lines
     .map((line, index) => {
-      const dy = index === 0 ? 0 : lineHeight;
-      return `<tspan x="${textX}" dy="${dy}">${escapeXml(line)}</tspan>`;
+      const lineWidth = measureTextWidth(font, line, fontSize, letterSpacing);
+      let x = field.x;
+      if (align === "center") x = field.x + (boxWidth - lineWidth) / 2;
+      else if (align === "right") x = field.x + boxWidth - lineWidth;
+
+      const y = field.y + fontSize + index * lineHeight;
+      const d = textToPathData(font, line, x, y, fontSize, letterSpacing);
+      return `<path d="${d}" fill="${color}"/>`;
     })
-    .join("");
+    .join("\n  ");
 
   const svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-  <text
-    x="${textX}"
-    y="${field.y + fontSize}"
-    text-anchor="${anchor}"
-    font-family="${fontFamilyAttr}"${fontStyleAttr}
-    font-size="${fontSize}"
-    font-weight="${fontWeight}"
-    fill="${color}"${letterSpacingAttr}
-  >${tspans}</text>
+  ${paths}
 </svg>`;
 
   return Buffer.from(svg);
