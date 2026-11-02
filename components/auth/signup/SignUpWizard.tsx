@@ -194,10 +194,7 @@ export function SignUpWizard() {
         onError: (error) => {
           if (error instanceof ApiClientError && error.code === "USER_EXISTS") {
             setExistingAccountHint(true);
-            setFormError(
-              error.message ||
-                "An account with this email already exists. Go to Sign in to log in."
-            );
+            setFormError(null);
             return;
           }
           setExistingAccountHint(false);
@@ -658,7 +655,7 @@ export function SignUpWizard() {
       <p className="mt-6 text-center text-xs text-[#557393]">
         Already have an account?{" "}
         <Link href="/sign-in" className="font-bold text-[#38B2D1] hover:underline">
-          Sign In
+          Sign in
         </Link>
       </p>
     </div>
