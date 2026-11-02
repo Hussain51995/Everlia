@@ -3,7 +3,9 @@ import {
   apiSuccess,
   validationError,
 } from "@/lib/api/response";
+import { findAuthUserIdByEmail } from "@/lib/onboarding/account";
 import { discoverOrganizations } from "@/lib/onboarding/discover";
+import { normalizeEmailAddress } from "@/lib/onboarding/normalize-email";
 import {
   checkRateLimit,
   getClientIp,
@@ -23,7 +25,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const email = parsed.data.email.trim().toLowerCase();
+    const email =
+      normalizeEmailAddress(parsed.data.email) ??
+      parsed.data.email.trim().toLowerCase();
     const ip = getClientIp(request);
     const emailHash = await hashRateLimitIdentity(email);
     const limit = checkRateLimit({
@@ -44,6 +48,18 @@ export async function POST(request: Request) {
             "Retry-After": String(limit.retryAfterSeconds),
           },
         }
+      );
+    }
+
+    const existingUserId = await findAuthUserIdByEmail(email);
+    if (existingUserId) {
+      return apiError(
+        {
+          code: "USER_EXISTS",
+          message:
+            "An account with this email already exists. Go to Sign in to log in.",
+        },
+        409
       );
     }
 

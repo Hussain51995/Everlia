@@ -77,6 +77,7 @@ export function SignUpWizard() {
   const resendVerification = useResendVerification();
 
   const [formError, setFormError] = useState<string | null>(null);
+  const [existingAccountHint, setExistingAccountHint] = useState(false);
   const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
   const [emailVerificationEnabled, setEmailVerificationEnabled] = useState(true);
   const [verificationLink, setVerificationLink] = useState<string | null>(null);
@@ -154,6 +155,7 @@ export function SignUpWizard() {
 
   const handleEmailContinue = () => {
     setFormError(null);
+    setExistingAccountHint(false);
     if (!industryId) {
       setFormError("Select an industry first");
       setSignupStep(1);
@@ -170,6 +172,7 @@ export function SignUpWizard() {
       { industryId, email: parsed.data },
       {
         onSuccess: (result) => {
+          setExistingAccountHint(false);
           setSignupEmail(result.email ?? parsed.data);
           setDiscoveryResult(result);
           setSignupIntent(null);
@@ -189,6 +192,15 @@ export function SignUpWizard() {
           setSignupStep(3);
         },
         onError: (error) => {
+          if (error instanceof ApiClientError && error.code === "USER_EXISTS") {
+            setExistingAccountHint(true);
+            setFormError(
+              error.message ||
+                "An account with this email already exists. Go to Sign in to log in."
+            );
+            return;
+          }
+          setExistingAccountHint(false);
           setFormError(
             error instanceof ApiClientError
               ? error.message
@@ -574,14 +586,17 @@ export function SignUpWizard() {
         <EmailStep
           email={signupEmail}
           error={formError}
+          existingAccount={existingAccountHint}
           isLoading={discover.isPending}
           onEmailChange={(value) => {
             setSignupEmail(value);
             setFormError(null);
+            setExistingAccountHint(false);
           }}
           onContinue={handleEmailContinue}
           onBack={() => {
             setFormError(null);
+            setExistingAccountHint(false);
             setSignupStep(1);
           }}
         />

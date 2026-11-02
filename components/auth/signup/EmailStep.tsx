@@ -14,6 +14,7 @@ import {
 type EmailStepProps = {
   email: string;
   error: string | null;
+  existingAccount?: boolean;
   isLoading: boolean;
   onEmailChange: (email: string) => void;
   onContinue: () => void;
@@ -23,6 +24,7 @@ type EmailStepProps = {
 export function EmailStep({
   email,
   error,
+  existingAccount = false,
   isLoading,
   onEmailChange,
   onContinue,
@@ -37,6 +39,22 @@ export function EmailStep({
       }}
     >
       <FormError message={error} />
+
+      {existingAccount ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-sm text-amber-900">
+          <p className="font-semibold">This email is already registered.</p>
+          <p className="mt-1 text-xs text-amber-800/90">
+            Sign in with your existing password instead of creating a new
+            account.
+          </p>
+          <Link
+            href="/sign-in"
+            className="mt-2 inline-flex text-xs font-bold text-[#38B2D1] hover:underline"
+          >
+            Go to Sign in →
+          </Link>
+        </div>
+      ) : null}
 
       <div>
         <label htmlFor="signup-work-email" className={fieldLabelClass}>
