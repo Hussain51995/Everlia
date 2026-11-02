@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { apiError, apiSuccess, validationError } from "@/lib/api/response";
-import { sortOrganizationsWithOtherLast } from "@/lib/auth/sort-organizations";
+import {
+  excludeLegacyOtherOrganizations,
+  sortOrganizationsWithOtherLast,
+} from "@/lib/auth/sort-organizations";
 import { organizationsQuerySchema } from "@/lib/validations/auth";
 import { firstZodError } from "@/lib/validations/errors";
 
@@ -32,7 +35,11 @@ export async function GET(request: Request) {
       );
     }
 
-    return apiSuccess(sortOrganizationsWithOtherLast(data ?? []));
+    return apiSuccess(
+      sortOrganizationsWithOtherLast(
+        excludeLegacyOtherOrganizations(data ?? [])
+      )
+    );
   } catch (error) {
     return apiError(
       {

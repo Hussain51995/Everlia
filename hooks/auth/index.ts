@@ -14,3 +14,13 @@ export {
   useSetActiveOrganization,
   useCheckEmail,
 } from "@/hooks/auth/use-auth-mutations";
+export {
+  useDiscoverOrganizations,
+  useRegisterIndependent,
+  useRegisterOrganizationRequest,
+  useRequestMembership,
+  useAcceptInvitation,
+  useResolveInvitation,
+  useProvisionIndependent,
+  useSubmitOrganizationRequest,
+} from "@/hooks/auth/use-onboarding";

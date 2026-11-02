@@ -62,6 +62,25 @@ export function mapAuthError(message: string | undefined): ApiErrorBody {
     };
   }
 
+  if (normalized.includes("database error creating new user")) {
+    return {
+      code: "SIGNUP_TRIGGER_FAILED",
+      message:
+        "Account could not be created because organization signup checks failed. Confirm migrations 006–018 are applied, the selected organization is eligible, and try again.",
+    };
+  }
+
+  if (
+    normalized.includes("privileged membership roles") ||
+    normalized.includes("assign_organization_owner")
+  ) {
+    return {
+      code: "MEMBERSHIP_PRIVILEGE_BLOCKED",
+      message:
+        "Could not assign organization ownership. Apply migration 019 (assign_organization_owner) and retry.",
+    };
+  }
+
   if (normalized.includes("password")) {
     return {
       code: "WEAK_PASSWORD",

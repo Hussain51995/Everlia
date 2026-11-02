@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import type { EmailOtpType } from "@supabase/supabase-js";
+import { activatePendingMembershipsForVerifiedUser } from "@/lib/onboarding/activate-memberships";
 
 function getSupabaseEnv() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -71,6 +72,19 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(
       new URL("/sign-in?error=auth_callback", origin)
     );
+  }
+
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user?.id) {
+      await activatePendingMembershipsForVerifiedUser({
+        userId: user.id,
+        userEmail: user.email ?? null,
+      });
+    }
+  } catch {
   }
 
   if (isEmailVerificationFlow) {

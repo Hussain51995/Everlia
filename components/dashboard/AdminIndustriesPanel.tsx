@@ -40,7 +40,7 @@ export function AdminIndustriesPanel() {
         onSuccess: (data) => {
           setName("");
           setFormSuccess(
-            `Created ${data.industry.name} with auto org "${data.otherOrganization.name}"`
+            `Created industry "${data.industry.name}". Add organizations separately.`
           );
         },
         onError: (error) => {
@@ -91,7 +91,9 @@ export function AdminIndustriesPanel() {
       <div>
         <h1 className="text-2xl font-extrabold text-[#0B1F3D]">Industries</h1>
         <p className="mt-1 text-sm text-[#557393]">
-          Creating an industry also creates an active organization named Other.
+          Create industries for the platform. Organizations are provisioned
+          separately (admin create, company request, or independent workspace).
+          Legacy Other catch-all orgs are no longer created.
         </p>
       </div>
 

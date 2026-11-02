@@ -1,19 +1,20 @@
 import { AuthLayout } from "@/components/auth/AuthLayout";
-import { SignUpForm } from "@/components/auth/SignUpForm";
+import { SignUpWizard } from "@/components/auth/signup";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Create Account - Everlia CRM",
-  description: "Start automating your client retention with Everlia direct mail & CRM.",
+  description:
+    "Join your organization or create a private Everlia workspace with verified domain discovery.",
 };
 
 export default function SignUpPage() {
   return (
     <AuthLayout
       title="Create your account"
-      subtitle="Select your industry and organization, then create your Everlia login."
+      subtitle="Select your industry, enter your work email, and we’ll help you find or create the right workspace."
     >
-      <SignUpForm />
+      <SignUpWizard />
     </AuthLayout>
   );
 }

@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { AdminIndustriesPanel } from "@/components/dashboard/AdminIndustriesPanel";
 import { AdminOrganizationsPanel } from "@/components/dashboard/AdminOrganizationsPanel";
+import { AdminOnboardingRequestsPanel } from "@/components/dashboard/AdminOnboardingRequestsPanel";
 import { ThemeLoader } from "@/components/ui/ThemeLoader";
 import { RefetchButton } from "@/components/ui/RefetchButton";
 import { useSession } from "@/hooks/auth";
 import { useAuthStore } from "@/stores/auth-store";
 import { adminKeys } from "@/hooks/admin/keys";
+
 
 export default function AdminOrganizationsPage() {
   const router = useRouter();
@@ -49,8 +51,10 @@ export default function AdminOrganizationsPage() {
       <div className="flex justify-end">
         <RefetchButton onClick={handleRefresh} isRefreshing={refreshing} />
       </div>
+      <AdminOnboardingRequestsPanel />
       <AdminIndustriesPanel />
       <AdminOrganizationsPanel />
     </div>
   );
 }
+
