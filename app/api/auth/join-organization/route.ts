@@ -6,12 +6,12 @@ import {
   validationError,
 } from "@/lib/api/response";
 import { setActiveOrganizationCookie } from "@/lib/auth/active-organization";
-import { joinOrganizationAsMember } from "@/lib/auth/join-organization";
 import {
   getAuthenticatedUser,
   isPlatformAdmin,
 } from "@/lib/auth/platform-admin";
 import { getSessionPayload } from "@/lib/auth/session";
+import { requestOrganizationMembership } from "@/lib/onboarding/membership";
 import { createClient } from "@/lib/supabase/server";
 import { joinOrganizationSchema } from "@/lib/validations/auth";
 import { firstZodError } from "@/lib/validations/errors";
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { organizationId, email, password } = parsed.data;
+    const { organizationId, email, password, invitationToken } = parsed.data;
     let userId: string | null = null;
 
     if (email && password) {
@@ -61,16 +61,47 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await joinOrganizationAsMember(userId, organizationId);
-    setActiveOrganizationCookie(organizationId);
+    const result = await requestOrganizationMembership({
+      userId,
+      organizationId,
+      invitationToken,
+    });
+
+    if (
+      result.activation === "invitation_required" ||
+      result.activation === "domain_mismatch"
+    ) {
+      return apiError(
+        {
+          code: result.activation.toUpperCase(),
+          message: result.message,
+        },
+        403
+      );
+    }
+
+    if (
+      result.activation === "active" ||
+      result.activation === "already_member"
+    ) {
+      setActiveOrganizationCookie(organizationId);
+    }
 
     const session = await getSessionPayload();
 
     return apiSuccess({
-      joined: !result.alreadyMember,
-      alreadyMember: result.alreadyMember,
-      organization: result.organization,
-      organizationName: result.organization.name,
+      joined: result.activation === "active",
+      alreadyMember: result.activation === "already_member",
+      pending:
+        result.activation === "pending" ||
+        result.activation === "email_unverified",
+      activation: result.activation,
+      organization: {
+        id: result.organizationId,
+        name: result.organizationName,
+      },
+      organizationName: result.organizationName,
+      membershipStatus: result.membershipStatus,
       session,
     });
   } catch (error) {

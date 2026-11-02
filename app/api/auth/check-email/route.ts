@@ -3,7 +3,12 @@ import {
   apiSuccess,
   validationError,
 } from "@/lib/api/response";
-import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  checkRateLimit,
+  getClientIp,
+  hashRateLimitIdentity,
+} from "@/lib/onboarding/rate-limit";
+import { normalizeEmailAddress } from "@/lib/onboarding/normalize-email";
 import { emailSchema } from "@/lib/validations/auth";
 import { firstZodError } from "@/lib/validations/errors";
 import { z } from "zod";
@@ -11,41 +16,6 @@ import { z } from "zod";
 const checkEmailSchema = z.object({
   email: emailSchema,
 });
-
-async function authUserExistsByEmail(email: string): Promise<boolean> {
-  const admin = createAdminClient();
-  const normalized = email.trim().toLowerCase();
-
-  const { data: row, error: schemaError } = await admin
-    .schema("auth")
-    .from("users")
-    .select("id")
-    .eq("email", normalized)
-    .maybeSingle();
-
-  if (!schemaError) {
-    return Boolean(row?.id);
-  }
-
-  let page = 1;
-  const perPage = 200;
-
-  while (page <= 25) {
-    const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    const match = data.users.some(
-      (user) => user.email?.toLowerCase() === normalized
-    );
-    if (match) return true;
-    if (data.users.length < perPage) break;
-    page += 1;
-  }
-
-  return false;
-}
 
 export async function POST(request: Request) {
   try {
@@ -56,10 +26,34 @@ export async function POST(request: Request) {
       return validationError(firstZodError(parsed.error, "Invalid email"));
     }
 
-    const email = parsed.data.email.toLowerCase();
-    const exists = await authUserExistsByEmail(email);
+    const email = normalizeEmailAddress(parsed.data.email);
+    if (!email) {
+      return validationError("Enter a valid email address");
+    }
 
-    return apiSuccess({ exists, email });
+    const ip = getClientIp(request);
+    const emailHash = await hashRateLimitIdentity(email);
+    const limit = checkRateLimit({
+      key: `auth:check-email:${ip}:${emailHash}`,
+      limit: 30,
+      windowMs: 15 * 60 * 1000,
+    });
+
+    if (!limit.allowed) {
+      return apiError(
+        {
+          code: "RATE_LIMITED",
+          message: "Too many attempts. Please try again later.",
+        },
+        429,
+        { headers: { "Retry-After": String(limit.retryAfterSeconds) } }
+      );
+    }
+
+    return apiSuccess({
+      email,
+      nextStep: "continue" as const,
+    });
   } catch (error) {
     return apiError(
       {

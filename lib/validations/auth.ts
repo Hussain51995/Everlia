@@ -30,6 +30,7 @@ export const joinOrganizationSchema = z
     organizationId: uuidSchema,
     email: emailSchema.optional(),
     password: z.string().min(1).optional(),
+    invitationToken: z.string().trim().min(16).max(200).optional(),
   })
   .superRefine((value, ctx) => {
     const hasEmail = Boolean(value.email);

@@ -125,7 +125,8 @@ export function AdminOrganizationsPanel() {
       <div>
         <h1 className="text-2xl font-extrabold text-[#0B1F3D]">Organizations</h1>
         <p className="mt-1 text-sm text-[#557393]">
-          Create organizations under an industry. Signup is join-only for members.
+          Create organizations under an industry. Activate or deactivate orgs as
+          needed. Self-service drafts appear here after provisioning.
         </p>
       </div>
 

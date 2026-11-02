@@ -77,9 +77,9 @@ export async function createOrganization(
   throw new Error(lastError ?? "Failed to create organization");
 }
 
-export async function createIndustryWithOtherOrg(
+export async function createIndustry(
   input: CreateIndustryInput
-): Promise<{ industry: Industry & { is_active?: boolean }; otherOrganization: Organization }> {
+): Promise<{ industry: Industry & { is_active?: boolean } }> {
   const admin = createAdminClient();
   const baseSlug = input.slug?.trim()
     ? slugifyOrganizationName(input.slug)
@@ -116,12 +116,11 @@ export async function createIndustryWithOtherOrg(
     throw new Error(lastError ?? "Failed to create industry");
   }
 
-  const otherOrganization = await createOrganization({
-    industryId: industry.id,
-    name: "Other",
-    slug: "other",
-    isActive: true,
-  });
+  return { industry };
+}
 
-  return { industry, otherOrganization };
+export async function createIndustryWithOtherOrg(
+  input: CreateIndustryInput
+): Promise<{ industry: Industry & { is_active?: boolean } }> {
+  return createIndustry(input);
 }

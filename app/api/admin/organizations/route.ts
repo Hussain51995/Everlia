@@ -30,7 +30,7 @@ export async function GET(request: Request) {
     let query = admin
       .from("organizations")
       .select(
-        "id, name, slug, industry_id, is_active, created_at, industry:industries(id, name, slug, is_active)"
+        "id, name, slug, industry_id, is_active, is_system_other, onboarding_status, join_policy, workspace_type, created_at, industry:industries(id, name, slug, is_active)"
       )
       .order("name");
 

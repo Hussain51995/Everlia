@@ -4,7 +4,7 @@ import {
   apiSuccess,
   validationError,
 } from "@/lib/api/response";
-import { createIndustryWithOtherOrg } from "@/lib/auth/organizations";
+import { createIndustry } from "@/lib/auth/organizations";
 import { requirePlatformAdmin } from "@/lib/auth/platform-admin";
 import { createIndustrySchema } from "@/lib/validations/auth";
 import { firstZodError } from "@/lib/validations/errors";
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await createIndustryWithOtherOrg({
+    const result = await createIndustry({
       name: parsed.data.name,
       slug: parsed.data.slug || undefined,
       isActive: parsed.data.isActive,
@@ -64,7 +64,6 @@ export async function POST(request: Request) {
 
     return apiSuccess({
       industry: result.industry,
-      otherOrganization: result.otherOrganization,
     });
   } catch (error) {
     return apiError(
