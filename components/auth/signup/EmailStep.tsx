@@ -101,16 +101,6 @@ export function EmailStep({
           )}
         </button>
       </div>
-
-      <p className="text-center text-xs text-[#557393]">
-        Already have an account?{" "}
-        <Link
-          href="/sign-in"
-          className="font-bold text-[#38B2D1] hover:underline"
-        >
-          Sign in
-        </Link>
-      </p>
     </form>
   );
 }

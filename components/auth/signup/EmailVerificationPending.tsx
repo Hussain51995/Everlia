@@ -71,7 +71,7 @@ export function EmailVerificationPending({
         href="/sign-in"
         className="inline-flex text-sm font-bold text-[#38B2D1] hover:underline"
       >
-        Go to Sign In
+        Go to Sign in
       </Link>
     </div>
   );

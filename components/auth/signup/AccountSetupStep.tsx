@@ -161,15 +161,20 @@ export function AccountSetupStep({
               <label htmlFor="signup-last-name" className={fieldLabelClass}>
                 Last Name
               </label>
-              <input
-                id="signup-last-name"
-                required
-                value={values.lastName}
-                onChange={(e) => onChange({ lastName: e.target.value })}
-                placeholder="Doe"
-                className={textInputNoIconClass}
-                autoComplete="family-name"
-              />
+              <div className="relative mt-1">
+                <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[#557393]">
+                  <UserIcon className="h-4 w-4" />
+                </span>
+                <input
+                  id="signup-last-name"
+                  required
+                  value={values.lastName}
+                  onChange={(e) => onChange({ lastName: e.target.value })}
+                  placeholder="Doe"
+                  className={textInputClass}
+                  autoComplete="family-name"
+                />
+              </div>
             </div>
           </div>
 
