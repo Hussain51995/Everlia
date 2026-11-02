@@ -16,5 +16,6 @@ export {
   useRejectOrganizationRequest,
   useAdminOrganizationDomains,
   useAdminVerifyDomain,
+  useAdminDomains,
 } from "@/hooks/admin/use-organization-requests";
 export { adminKeys } from "@/hooks/admin/keys";

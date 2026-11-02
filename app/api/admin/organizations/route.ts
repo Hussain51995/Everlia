@@ -30,7 +30,7 @@ export async function GET(request: Request) {
     let query = admin
       .from("organizations")
       .select(
-        "id, name, slug, industry_id, is_active, is_system_other, onboarding_status, join_policy, workspace_type, created_at, industry:industries(id, name, slug, is_active)"
+        "id, name, slug, industry_id, is_active, is_system_other, onboarding_status, join_policy, workspace_type, created_at, industry:industries(id, name, slug, is_active), domains:organization_domains(id, domain, verification_status, verified_at)"
       )
       .order("name");
 
@@ -76,14 +76,21 @@ export async function POST(request: Request) {
       );
     }
 
-    const organization = await createOrganization({
+    const result = await createOrganization({
       industryId: parsed.data.industryId,
       name: parsed.data.name,
       slug: parsed.data.slug || undefined,
       isActive: parsed.data.isActive,
+      domain: parsed.data.domain || undefined,
+      workspaceType: parsed.data.workspaceType,
+      joinPolicy: parsed.data.joinPolicy,
+      markDomainVerified: parsed.data.markDomainVerified,
     });
 
-    return apiSuccess({ organization });
+    return apiSuccess({
+      organization: result.organization,
+      domain: result.domain,
+    });
   } catch (error) {
     return apiError(
       {

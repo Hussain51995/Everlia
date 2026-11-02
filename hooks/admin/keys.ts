@@ -7,4 +7,6 @@ export const adminKeys = {
     [...adminKeys.all, "organization-requests", status ?? "all"] as const,
   organizationDomains: (organizationId?: string | null) =>
     [...adminKeys.all, "organization-domains", organizationId ?? "none"] as const,
+  domains: (industryId?: string | null) =>
+    [...adminKeys.all, "domains", industryId ?? "all"] as const,
 };

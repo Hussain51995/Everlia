@@ -2,8 +2,10 @@
 
 import { useMemo, useState } from "react";
 import {
+  useAdminDomains,
   useAdminIndustries,
   useAdminOrganizations,
+  useAdminVerifyDomain,
   useCreateOrganization,
   useDeleteOrganization,
   useUpdateOrganization,
@@ -33,20 +35,41 @@ function industryLabel(
   return name;
 }
 
+function domainSummary(
+  domains:
+    | Array<{ domain: string; verification_status: string }>
+    | null
+    | undefined
+) {
+  if (!domains || domains.length === 0) return "—";
+  return domains
+    .map((d) => `${d.domain}${d.verification_status === "verified" ? " ✓" : ""}`)
+    .join(", ");
+}
+
 export function AdminOrganizationsPanel() {
   const { showToast } = useToast();
   const industriesQuery = useAdminIndustries();
   const [industryFilter, setIndustryFilter] = useState<string>("");
   const organizationsQuery = useAdminOrganizations(industryFilter || null);
+  const domainsQuery = useAdminDomains(industryFilter || null);
   const createOrganization = useCreateOrganization();
   const updateOrganization = useUpdateOrganization();
   const deleteOrganization = useDeleteOrganization();
+  const verifyDomain = useAdminVerifyDomain();
 
   const [name, setName] = useState("");
   const [industryId, setIndustryId] = useState("");
+  const [domain, setDomain] = useState("");
+  const [workspaceType, setWorkspaceType] = useState<"company" | "team">(
+    "company"
+  );
+  const [markDomainVerified, setMarkDomainVerified] = useState(true);
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [domainOrgId, setDomainOrgId] = useState<string | null>(null);
+  const [domainInput, setDomainInput] = useState("");
 
   const industries = industriesQuery.data ?? [];
   const activeIndustries = useMemo(
@@ -60,6 +83,8 @@ export function AdminOrganizationsPanel() {
     return map;
   }, [industries]);
 
+  const availableDomains = domainsQuery.data?.domains ?? [];
+
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
@@ -71,11 +96,22 @@ export function AdminOrganizationsPanel() {
     }
 
     createOrganization.mutate(
-      { industryId, name: name.trim() },
       {
-        onSuccess: () => {
+        industryId,
+        name: name.trim(),
+        domain: domain.trim() || undefined,
+        workspaceType,
+        joinPolicy: domain.trim() ? "verified_domain" : "approval_required",
+        markDomainVerified: domain.trim() ? markDomainVerified : false,
+      },
+      {
+        onSuccess: (data) => {
           setName("");
-          setFormSuccess("Organization created");
+          setDomain("");
+          const domainLabel = data.domain
+            ? ` · domain ${data.domain.domain} (${data.domain.verification_status})`
+            : "";
+          setFormSuccess(`Organization created${domainLabel}`);
         },
         onError: (error) => {
           setFormError(
@@ -120,13 +156,51 @@ export function AdminOrganizationsPanel() {
     });
   };
 
+  const handleAddDomain = (organizationId: string) => {
+    const value = domainInput.trim();
+    if (!value) {
+      showToast({
+        tone: "error",
+        title: "Domain required",
+        description: "Enter a company domain such as acme.com",
+      });
+      return;
+    }
+
+    verifyDomain.mutate(
+      { organizationId, domain: value, markVerified: true },
+      {
+        onSuccess: () => {
+          showToast({
+            tone: "success",
+            title: "Domain verified",
+            description: `${value} attached and marked verified.`,
+          });
+          setDomainOrgId(null);
+          setDomainInput("");
+        },
+        onError: (error) => {
+          showToast({
+            tone: "error",
+            title: "Could not add domain",
+            description:
+              error instanceof ApiClientError
+                ? error.message
+                : "Please try again.",
+          });
+        },
+      }
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-extrabold text-[#0B1F3D]">Organizations</h1>
         <p className="mt-1 text-sm text-[#557393]">
-          Create organizations under an industry. Activate or deactivate orgs as
-          needed. Self-service drafts appear here after provisioning.
+          Create company/team organizations under an industry and attach
+          verified domains so signup discovery can find them. Multiple orgs may
+          share one domain — users then choose which to join.
         </p>
       </div>
 
@@ -187,7 +261,59 @@ export function AdminOrganizationsPanel() {
               />
             </div>
           </div>
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-[#0B1F3D]">
+              Workspace type
+            </label>
+            <select
+              value={workspaceType}
+              onChange={(e) =>
+                setWorkspaceType(e.target.value as "company" | "team")
+              }
+              className="mt-1 w-full rounded-2xl border border-[#C4EBF2] bg-[#F0FAFC] px-3 py-3 text-sm font-medium text-[#0B1F3D] outline-none focus:border-[#38B2D1] focus:bg-white"
+            >
+              <option value="company">Company</option>
+              <option value="team">Team</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-[#0B1F3D]">
+              Company domain
+            </label>
+            <input
+              type="text"
+              list="admin-available-domains"
+              value={domain}
+              onChange={(e) => setDomain(e.target.value)}
+              placeholder="acme.com (optional)"
+              className="mt-1 w-full rounded-2xl border border-[#C4EBF2] bg-[#F0FAFC] px-3 py-3 text-sm font-medium text-[#0B1F3D] outline-none focus:border-[#38B2D1] focus:bg-white"
+            />
+            <datalist id="admin-available-domains">
+              {availableDomains.map((d) => (
+                <option key={d.domain} value={d.domain}>
+                  {d.organizationCount} org(s)
+                </option>
+              ))}
+            </datalist>
+            <p className="mt-1 text-[11px] text-[#557393]">
+              Pick an existing domain or type a new one. Required for email
+              discovery at signup.
+            </p>
+          </div>
         </div>
+
+        {domain.trim() ? (
+          <label className="flex items-center gap-2 text-xs font-semibold text-[#0B1F3D]">
+            <input
+              type="checkbox"
+              checked={markDomainVerified}
+              onChange={(e) => setMarkDomainVerified(e.target.checked)}
+              className="rounded border-[#C4EBF2]"
+            />
+            Mark domain verified immediately (recommended for admin-created
+            orgs)
+          </label>
+        ) : null}
 
         <button
           type="submit"
@@ -197,6 +323,34 @@ export function AdminOrganizationsPanel() {
           {createOrganization.isPending ? "Creating…" : "Create organization"}
         </button>
       </form>
+
+      {availableDomains.length > 0 ? (
+        <div className="rounded-3xl border border-[#C4EBF2] bg-white p-5 shadow-sm space-y-3">
+          <h2 className="text-sm font-bold uppercase tracking-wider text-[#0B1F3D]">
+            Available domains
+          </h2>
+          <p className="text-xs text-[#557393]">
+            Reuse a domain below when creating another organization that shares
+            it. Signup will ask the user to choose among matching orgs.
+          </p>
+          <ul className="flex flex-wrap gap-2">
+            {availableDomains.map((d) => (
+              <li key={d.domain}>
+                <button
+                  type="button"
+                  onClick={() => setDomain(d.domain)}
+                  className="rounded-xl border border-[#C4EBF2] bg-[#F0FAFC] px-3 py-1.5 text-xs font-bold text-[#0B1F3D] hover:border-[#38B2D1]"
+                >
+                  {d.domain}
+                  <span className="ml-1 font-medium text-[#557393]">
+                    · {d.organizationCount}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <div className="rounded-3xl border border-[#C4EBF2] bg-white p-5 shadow-sm space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -231,7 +385,8 @@ export function AdminOrganizationsPanel() {
                 <tr className="border-b border-[#C4EBF2] text-xs uppercase tracking-wider text-[#557393]">
                   <th className="py-2 pr-4 font-bold">Name</th>
                   <th className="py-2 pr-4 font-bold">Industry</th>
-                  <th className="py-2 pr-4 font-bold">Slug</th>
+                  <th className="py-2 pr-4 font-bold">Type</th>
+                  <th className="py-2 pr-4 font-bold">Domains</th>
                   <th className="py-2 pr-4 font-bold">Status</th>
                   <th className="py-2 font-bold">Actions</th>
                 </tr>
@@ -247,6 +402,11 @@ export function AdminOrganizationsPanel() {
                       ? industryNameById.get(org.industry_id)
                       : undefined
                   );
+                  const domains = Array.isArray(org.domains)
+                    ? org.domains
+                    : org.domains
+                      ? [org.domains]
+                      : [];
 
                   return (
                     <tr key={org.id} className="border-b border-[#F0FAFC]">
@@ -254,7 +414,12 @@ export function AdminOrganizationsPanel() {
                         {org.name}
                       </td>
                       <td className="py-3 pr-4 text-[#557393]">{industry}</td>
-                      <td className="py-3 pr-4 text-[#557393]">{org.slug}</td>
+                      <td className="py-3 pr-4 text-[#557393]">
+                        {org.workspace_type ?? "company"}
+                      </td>
+                      <td className="py-3 pr-4 text-[#557393]">
+                        {domainSummary(domains)}
+                      </td>
                       <td className="py-3 pr-4">
                         <span
                           className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
@@ -267,32 +432,69 @@ export function AdminOrganizationsPanel() {
                         </span>
                       </td>
                       <td className="py-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <button
-                            type="button"
-                            disabled={updateOrganization.isPending}
-                            onClick={() =>
-                              updateOrganization.mutate({
-                                id: org.id,
-                                isActive: !org.is_active,
-                              })
-                            }
-                            className="rounded-xl border border-[#C4EBF2] px-3 py-1.5 text-xs font-bold text-[#0B1F3D] hover:bg-[#F0FAFC] disabled:opacity-60"
-                          >
-                            {org.is_active ? "Deactivate" : "Activate"}
-                          </button>
-                          <button
-                            type="button"
-                            disabled={
-                              deleteOrganization.isPending &&
-                              deletingId === org.id
-                            }
-                            onClick={() => handleDelete(org)}
-                            className="inline-flex items-center gap-1 rounded-xl border border-rose-200 px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-50 disabled:opacity-60"
-                          >
-                            <TrashIcon className="h-3.5 w-3.5" />
-                            {deletingId === org.id ? "Deleting…" : "Delete"}
-                          </button>
+                        <div className="flex flex-col gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              disabled={updateOrganization.isPending}
+                              onClick={() =>
+                                updateOrganization.mutate({
+                                  id: org.id,
+                                  isActive: !org.is_active,
+                                })
+                              }
+                              className="rounded-xl border border-[#C4EBF2] px-3 py-1.5 text-xs font-bold text-[#0B1F3D] hover:bg-[#F0FAFC] disabled:opacity-60"
+                            >
+                              {org.is_active ? "Deactivate" : "Activate"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDomainOrgId(
+                                  domainOrgId === org.id ? null : org.id
+                                );
+                                setDomainInput("");
+                              }}
+                              className="rounded-xl border border-[#C4EBF2] px-3 py-1.5 text-xs font-bold text-[#0B1F3D] hover:bg-[#F0FAFC]"
+                            >
+                              {domainOrgId === org.id
+                                ? "Cancel domain"
+                                : "Add domain"}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={
+                                deleteOrganization.isPending &&
+                                deletingId === org.id
+                              }
+                              onClick={() => handleDelete(org)}
+                              className="inline-flex items-center gap-1 rounded-xl border border-rose-200 px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-50 disabled:opacity-60"
+                            >
+                              <TrashIcon className="h-3.5 w-3.5" />
+                              {deletingId === org.id ? "Deleting…" : "Delete"}
+                            </button>
+                          </div>
+                          {domainOrgId === org.id ? (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <input
+                                type="text"
+                                value={domainInput}
+                                onChange={(e) => setDomainInput(e.target.value)}
+                                placeholder="newco.com"
+                                className="min-w-[160px] flex-1 rounded-xl border border-[#C4EBF2] bg-[#F0FAFC] px-3 py-1.5 text-xs font-medium text-[#0B1F3D] outline-none"
+                              />
+                              <button
+                                type="button"
+                                disabled={verifyDomain.isPending}
+                                onClick={() => handleAddDomain(org.id)}
+                                className="rounded-xl bg-[#38B2D1] px-3 py-1.5 text-xs font-bold text-white disabled:opacity-60"
+                              >
+                                {verifyDomain.isPending
+                                  ? "Saving…"
+                                  : "Verify & save"}
+                              </button>
+                            </div>
+                          ) : null}
                         </div>
                       </td>
                     </tr>

@@ -79,6 +79,13 @@ export const createOrganizationSchema = z.object({
   name: z.string().trim().min(2, "Organization name is required").max(120),
   slug: z.string().trim().min(1).max(60).optional().or(z.literal("")),
   isActive: z.boolean().optional(),
+  domain: z.string().trim().min(3).max(253).optional().or(z.literal("")),
+  workspaceType: z.enum(["company", "team"]).optional().default("company"),
+  joinPolicy: z
+    .enum(["verified_domain", "approval_required", "invite_only"])
+    .optional()
+    .default("verified_domain"),
+  markDomainVerified: z.boolean().optional().default(true),
 });
 
 export const updateOrganizationSchema = z

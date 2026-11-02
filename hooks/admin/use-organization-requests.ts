@@ -109,3 +109,28 @@ export function useAdminVerifyDomain() {
     },
   });
 }
+
+export type AdminDomainSummary = {
+  domain: string;
+  verificationStatuses: string[];
+  organizationCount: number;
+  organizations: Array<{
+    id: string;
+    name: string;
+    industryId: string | null;
+    isActive: boolean;
+  }>;
+};
+
+export function useAdminDomains(industryId?: string | null) {
+  const params = new URLSearchParams();
+  params.set("status", "all");
+  if (industryId) params.set("industry_id", industryId);
+  const query = `/api/admin/domains?${params.toString()}`;
+
+  return useQuery({
+    queryKey: adminKeys.domains(industryId),
+    queryFn: () =>
+      apiClient<{ domains: AdminDomainSummary[]; rows: unknown[] }>(query),
+  });
+}
