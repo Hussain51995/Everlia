@@ -33,7 +33,9 @@ type SignUpResponse = {
 type JoinOrganizationResponse = {
   joined: boolean;
   alreadyMember: boolean;
-  organization: { id: string; name: string; slug: string };
+  pending?: boolean;
+  activation?: string;
+  organization: { id: string; name: string; slug?: string };
   organizationName: string;
   session: SessionPayload | null;
 };
@@ -222,9 +224,12 @@ export function useSetupPassword() {
 export function useCheckEmail() {
   return useMutation({
     mutationFn: (input: { email: string }) =>
-      apiClient<{ exists: boolean; email: string }>("/api/auth/check-email", {
-        method: "POST",
-        body: input,
-      }),
+      apiClient<{ email: string; nextStep: "continue" }>(
+        "/api/auth/check-email",
+        {
+          method: "POST",
+          body: input,
+        }
+      ),
   });
 }

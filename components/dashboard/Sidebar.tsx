@@ -76,6 +76,22 @@ export function Sidebar({ mobileOpen, onCloseMobile, onSendCard }: SidebarProps)
           },
         ]
       : []),
+    ...(canUseMemberOrganizations &&
+    memberships.some(
+      (m) =>
+        m.organization_id === activeOrganizationId &&
+        m.status === "active" &&
+        (m.role === "owner" || m.role === "admin" || m.role === "org_admin")
+    )
+      ? [
+          {
+            name: "Pending members",
+            href: "/dashboard/members",
+            icon: UsersIcon,
+            badge: null as string | null,
+          },
+        ]
+      : []),
     ...(isPlatformAdmin
       ? [
           {
@@ -87,6 +103,7 @@ export function Sidebar({ mobileOpen, onCloseMobile, onSendCard }: SidebarProps)
         ]
       : []),
   ];
+
 
   const handleOrgChange = (organizationId: string) => {
     if (!organizationId || organizationId === activeOrganizationId) return;

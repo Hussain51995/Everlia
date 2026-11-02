@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "seed:platform-admin": "tsx scripts/seed-platform-admin.ts",
     "seed:card-templates": "tsx scripts/seed-card-templates.ts",
     "generate:template-assets": "tsx scripts/generate-template-assets.ts"
@@ -37,6 +39,7 @@
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.20.5",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^3.2.7"
   }
 }

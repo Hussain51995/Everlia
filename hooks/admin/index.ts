@@ -10,4 +10,12 @@ export {
   useUpdateIndustry,
   useDeleteIndustry,
 } from "@/hooks/admin/use-industries";
+export {
+  useAdminOrganizationRequests,
+  useApproveOrganizationRequest,
+  useRejectOrganizationRequest,
+  useAdminOrganizationDomains,
+  useAdminVerifyDomain,
+  useAdminDomains,
+} from "@/hooks/admin/use-organization-requests";
 export { adminKeys } from "@/hooks/admin/keys";

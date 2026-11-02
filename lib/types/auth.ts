@@ -1,5 +1,19 @@
-export type OrganizationRole = "org_admin" | "member";
-export type MembershipStatus = "active" | "inactive" | "suspended";
+
+export type OrganizationRole = "owner" | "admin" | "member" | "org_admin";
+
+export type MembershipStatus =
+  | "pending"
+  | "active"
+  | "rejected"
+  | "inactive"
+  | "suspended";
+
+export type OrganizationWorkspaceType = "company" | "team" | "independent";
+export type OrganizationOnboardingStatus = "pending" | "active" | "rejected";
+export type OrganizationJoinPolicy =
+  | "invite_only"
+  | "approval_required"
+  | "verified_domain";
 
 export type Industry = {
   id: string;
@@ -14,6 +28,11 @@ export type Organization = {
   slug: string;
   industry_id?: string;
   is_active?: boolean;
+  workspace_type?: OrganizationWorkspaceType;
+  onboarding_status?: OrganizationOnboardingStatus;
+  join_policy?: OrganizationJoinPolicy;
+  created_by?: string | null;
+  is_system_other?: boolean;
 };
 
 export type Profile = {
@@ -40,6 +59,51 @@ export type OrganizationMembership = {
       slug: string;
     } | null;
   } | null;
+};
+
+export type DomainVerificationStatus = "pending" | "verified" | "rejected";
+export type DomainVerificationMethod =
+  | "dns_txt"
+  | "email"
+  | "manual"
+  | "platform_admin";
+
+export type OrganizationDomain = {
+  id: string;
+  organization_id: string;
+  domain: string;
+  verification_status: DomainVerificationStatus;
+  verification_method: DomainVerificationMethod | null;
+  verified_at: string | null;
+  verification_token?: string | null;
+  txt_record_host?: string | null;
+  txt_record_value?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type OrganizationRequestStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "cancelled";
+
+export type OrganizationRequest = {
+  id: string;
+  industry_id: string;
+  requesting_user_id: string;
+  requested_name: string;
+  requested_domain: string | null;
+  requested_workspace_type: Extract<
+    OrganizationWorkspaceType,
+    "company" | "team"
+  >;
+  status: OrganizationRequestStatus;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  resulting_organization_id: string | null;
+  review_notes: string | null;
+  business_details?: Record<string, unknown>;
 };
 
 export type AuthUser = {

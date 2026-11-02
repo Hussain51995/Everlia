@@ -28,7 +28,6 @@ export function useCreateIndustry() {
     mutationFn: (input: CreateIndustryInput) =>
       apiClient<{
         industry: AdminIndustry;
-        otherOrganization: { id: string; name: string; slug: string };
       }>("/api/admin/industries", {
         method: "POST",
         body: input,

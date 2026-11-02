@@ -18,6 +18,12 @@ export type AdminOrganization = Organization & {
     slug: string;
     is_active?: boolean;
   } | null;
+  domains?: Array<{
+    id: string;
+    domain: string;
+    verification_status: string;
+    verified_at: string | null;
+  }> | null;
 };
 
 export function useAdminOrganizations(industryId?: string | null) {
@@ -36,13 +42,17 @@ export function useCreateOrganization() {
 
   return useMutation({
     mutationFn: (input: CreateOrganizationInput) =>
-      apiClient<{ organization: AdminOrganization }>(
-        "/api/admin/organizations",
-        {
-          method: "POST",
-          body: input,
-        }
-      ),
+      apiClient<{
+        organization: AdminOrganization;
+        domain: {
+          id: string;
+          domain: string;
+          verification_status: string;
+        } | null;
+      }>("/api/admin/organizations", {
+        method: "POST",
+        body: input,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminKeys.all });
     },
