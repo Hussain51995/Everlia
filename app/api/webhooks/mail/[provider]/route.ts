@@ -54,6 +54,24 @@ export async function POST(request: Request, { params }: Params) {
         .eq("id", card.id);
     }
 
+    if (card?.id) {
+      const { data: mailing } = await admin
+        .from("campaign_mailings")
+        .select("id, status")
+        .eq("greeting_card_id", card.id)
+        .maybeSingle();
+
+      if (mailing) {
+        await admin
+          .from("campaign_mailings")
+          .update({
+            last_provider_status: result.providerStatus,
+            provider_mail_id: result.providerMailId,
+          })
+          .eq("id", mailing.id);
+      }
+    }
+
     return apiSuccess({
       matched: true,
       providerMailId: result.providerMailId,

@@ -7,6 +7,7 @@ import { MetricsOverview } from "@/components/dashboard/MetricsOverview";
 import { LeadFunnelBarChart } from "@/components/dashboard/charts/LeadFunnelBarChart";
 import { CampaignPieChart } from "@/components/dashboard/charts/CampaignPieChart";
 import { RecentActivityTable } from "@/components/dashboard/RecentActivityTable";
+import { StartCampaignDialog } from "@/components/dashboard/campaigns/StartCampaignDialog";
 import { SparklesIcon, CalendarIcon, BuildingIcon } from "@/components/ui/Icons";
 import { ThemeLoader } from "@/components/ui/ThemeLoader";
 import { RefetchButton } from "@/components/ui/RefetchButton";
@@ -18,6 +19,7 @@ import { useDashboardStats } from "@/hooks/dashboard/use-dashboard-stats";
 export function DashboardHome() {
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
+  const [startCampaignOpen, setStartCampaignOpen] = useState(false);
   const profile = useAuthStore((state) => state.profile);
   const membership = useAuthStore((state) => state.membership);
   const isPlatformAdmin = useAuthStore((state) => state.isPlatformAdmin);
@@ -116,7 +118,15 @@ export function DashboardHome() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setStartCampaignOpen(true)}
+            className="inline-flex items-center gap-2 rounded-2xl bg-[#38B2D1] px-4 py-2.5 text-xs font-bold text-white shadow-md transition-all hover:bg-[#2ca0be]"
+          >
+            <SparklesIcon className="h-4 w-4" />
+            Start Campaign
+          </button>
           <RefetchButton onClick={handleRefresh} isRefreshing={refreshing} />
           <div className="flex items-center gap-2 rounded-2xl border border-[#C4EBF2] bg-white px-4 py-2 text-xs font-bold text-[#0B1F3D] shadow-xs">
             <CalendarIcon className="h-4 w-4 text-[#38B2D1]" />
@@ -147,6 +157,11 @@ export function DashboardHome() {
           />
         </div>
       </div>
+
+      <StartCampaignDialog
+        open={startCampaignOpen}
+        onClose={() => setStartCampaignOpen(false)}
+      />
     </div>
   );
 }

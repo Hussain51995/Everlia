@@ -88,12 +88,35 @@ export type Customer = {
   province_or_state: string;
   postal_or_zip: string;
   country_code: string;
+  metadata?: Record<string, unknown>;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type CustomerMilestoneType =
+  | "birthday"
+  | "home_anniversary"
+  | "closing_anniversary"
+  | "custom";
+
+export type CustomerMilestone = {
+  id: string;
+  organization_id: string;
+  customer_id: string;
+  milestone_type: CustomerMilestoneType;
+  anchor_date: string;
+  label: string | null;
+  property_type: string | null;
+  recurs_annually: boolean;
+  metadata: Record<string, unknown>;
+  is_active: boolean;
   created_at?: string;
   updated_at?: string;
 };
 
 export type GreetingCardFieldValues = {
   customer_name?: string;
+  occasion_heading?: string;
   personal_message?: string;
   sender_name?: string;
   sender_title?: string;
@@ -116,6 +139,8 @@ export type GreetingCard = {
   status: GreetingCardStatus;
   front_artwork_url: string | null;
   back_artwork_url: string | null;
+  campaign_id?: string | null;
+  campaign_mailing_id?: string | null;
   created_at?: string;
   updated_at?: string;
   sent_at?: string | null;
