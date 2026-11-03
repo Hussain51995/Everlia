@@ -14,6 +14,7 @@ import {
   BuildingIcon,
   SparklesIcon,
   PlusIcon,
+  CalendarIcon,
 } from "@/components/ui/Icons";
 import { useSetActiveOrganization, useSignOut } from "@/hooks/auth";
 import { useAuthStore } from "@/stores/auth-store";
@@ -34,6 +35,7 @@ const NAV_ITEMS = [
   { name: "Overview", href: "/dashboard", icon: LayoutDashboardIcon, badge: null },
   { name: "Templates", href: "/dashboard/templates", icon: GiftIcon, badge: null },
   { name: "My Cards", href: "/dashboard/cards", icon: SendIcon, badge: null },
+  { name: "Campaigns", href: "/dashboard/campaigns", icon: CalendarIcon, badge: null },
   { name: "Customers", href: "/dashboard/customers", icon: UsersIcon, badge: null },
   { name: "Responses", href: "/dashboard/responses", icon: ChartIcon, badge: null },
 ];
