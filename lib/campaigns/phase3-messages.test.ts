@@ -113,7 +113,8 @@ describe("Phase 3 placeholders", () => {
       context: { customer: { firstName: "Sam" } },
     });
     expect(copy.message).toContain("Thanksgiving");
-    expect(copy.greeting).toContain("Sam");
+    expect(copy.greeting).toBe("Happy Thanksgiving!");
+    expect(copy.greeting).not.toContain("Sam");
   });
 
   it("UNIT_PASS: missing firstName cleans birthday punctuation", () => {
@@ -216,7 +217,7 @@ describe("Phase 3 master design field mapping", () => {
     expect(values.footer_note).toBe("THANK YOU");
   });
 
-  it("UNIT_PASS: occasion_heading region keeps recipient name separate", () => {
+  it("UNIT_PASS: occasion_heading region formats Dear first name", () => {
     const design = sampleDesign([
       {
         key: "occasion_heading",
@@ -234,14 +235,26 @@ describe("Phase 3 master design field mapping", () => {
       message: "Body",
       footer: "",
       recipientDisplayName: "Alex Rivera",
+      recipientFirstName: "Alex",
     });
     expect(values.occasion_heading).toBe("Happy Birthday!");
-    expect(values.customer_name).toBe("Alex Rivera");
+    expect(values.customer_name).toBe("Dear Alex");
   });
 
-  it("UNIT_PASS: personalizeCampaignCard fills sender + birthday copy", () => {
+  it("UNIT_PASS: personalizeCampaignCard fills Dear name + sender + birthday copy", () => {
+    const design = sampleDesign([
+      {
+        key: "occasion_heading",
+        type: "text",
+        x: 80,
+        y: 100,
+        width: 680,
+        fontSize: 64,
+        maxLines: 2,
+      },
+    ]);
     const result = personalizeCampaignCard({
-      designConfig: sampleDesign(),
+      designConfig: design,
       occasionSlug: "birthday",
       customer: { first_name: "Alex", last_name: "Rivera" },
       sender: {
@@ -252,7 +265,9 @@ describe("Phase 3 master design field mapping", () => {
         email: "pat@example.com",
       },
     });
-    expect(result.fieldValues.customer_name).toContain("Alex");
+    expect(result.fieldValues.occasion_heading).toBe("Happy Birthday!");
+    expect(result.fieldValues.occasion_heading).not.toContain("Alex");
+    expect(result.fieldValues.customer_name).toBe("Dear Alex");
     expect(result.fieldValues.personal_message?.length).toBeGreaterThan(10);
     expect(result.fieldValues.sender_name).toBe("Pat Lee");
     expect(result.fieldValues.sender_title).toBe("Realtor");
@@ -267,7 +282,8 @@ describe("Phase 3 master design field mapping", () => {
       milestone: { anchor_date: "2019-03-01", type: "home_anniversary" },
       asOf: new Date("2025-03-01"),
     });
-    expect(result.greeting).toContain("6 years");
+    expect(result.greeting).toBe("Happy Home Anniversary!");
+    expect(result.greeting).not.toMatch(/Casey/i);
     expect(result.message).toContain("6 years");
   });
 

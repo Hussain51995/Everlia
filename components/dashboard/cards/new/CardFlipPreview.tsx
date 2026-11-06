@@ -1,16 +1,15 @@
 "use client";
 
 import type { CardTemplate } from "@/lib/types/cards";
-import type { TemplateMeta } from "@/lib/cards/template-meta";
+import { metaFromDesignConfig } from "@/lib/cards/template-meta";
 import type { CardSide } from "./types";
 
 type CardFlipPreviewProps = {
   template: CardTemplate;
-  templateMeta: TemplateMeta;
   activeSide: CardSide;
   customerName: string;
+  occasionHeading?: string;
   previewMessage: string;
-  footerNote: string;
   senderName: string;
   senderTitle: string;
   phone: string;
@@ -18,19 +17,42 @@ type CardFlipPreviewProps = {
   website: string;
 };
 
+function dearLine(customerName: string): string | null {
+  const trimmed = customerName.trim();
+  if (!trimmed) return null;
+  if (/^dear\s+/i.test(trimmed)) return trimmed;
+  const first = trimmed.split(/\s+/).filter(Boolean)[0];
+  return first ? `Dear ${first}` : null;
+}
+
 export function CardFlipPreview({
   template,
-  templateMeta,
   activeSide,
   customerName,
+  occasionHeading = "",
   previewMessage,
-  footerNote,
   senderName,
   senderTitle,
   phone,
   emailAddress,
   website,
 }: CardFlipPreviewProps) {
+  const frontMeta = metaFromDesignConfig(
+    template.design_config,
+    "front",
+    template.slug
+  );
+  const backMeta = metaFromDesignConfig(
+    template.design_config,
+    "back",
+    template.slug
+  );
+
+  const dear = dearLine(customerName);
+  const hasFrontContent =
+    Boolean(occasionHeading.trim()) ||
+    Boolean(dear) ||
+    Boolean(previewMessage.trim());
   const hasSenderInfo =
     Boolean(senderName) ||
     Boolean(senderTitle) ||
@@ -62,26 +84,43 @@ export function CardFlipPreview({
                 alt={`${template.name} front preview`}
                 className="h-full w-full object-cover"
               />
-              <div className="pointer-events-none absolute inset-y-0 left-0 flex w-[42%] flex-col justify-end px-5 pb-7">
-                <p className="font-cursive text-sm font-bold italic text-[#0B1F3D]">
-                  {customerName ? `Dear ${customerName}` : "Dear Customer"}
-                </p>
-                <div
-                  className="mt-1.5 h-0.5 w-6 rounded-full"
-                  style={{ backgroundColor: templateMeta.accentColor }}
-                />
-                <p className="mt-2 line-clamp-4 text-[10px] leading-relaxed text-[#557393]">
-                  {previewMessage}
-                </p>
-                {footerNote ? (
-                  <p
-                    className="mt-2.5 text-[8px] font-bold uppercase tracking-[0.12em]"
-                    style={{ color: templateMeta.accentColor }}
-                  >
-                    {footerNote}
-                  </p>
-                ) : null}
-              </div>
+              {hasFrontContent ? (
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex w-[48%] flex-col justify-start px-5 pt-6">
+                  {occasionHeading.trim() ? (
+                    <p
+                      className="text-sm font-extrabold leading-tight"
+                      style={{ color: frontMeta.headingColor }}
+                    >
+                      {occasionHeading}
+                    </p>
+                  ) : null}
+                  {dear ? (
+                    <p
+                      className={`${occasionHeading.trim() ? "mt-3" : ""} font-cursive text-sm font-bold italic`}
+                      style={{ color: frontMeta.dearColor }}
+                    >
+                      {dear}
+                    </p>
+                  ) : null}
+                  {previewMessage.trim() ? (
+                    <>
+                      <div
+                        className="mt-3 h-0.5 w-6 rounded-full"
+                        style={{ backgroundColor: frontMeta.accentColor }}
+                      />
+                      <p
+                        className="mt-2.5 line-clamp-6 text-[10px] font-semibold leading-relaxed"
+                        style={{
+                          color: frontMeta.bodyColor,
+                          textShadow: "0 1px 3px rgba(10,8,12,0.55)",
+                        }}
+                      >
+                        {previewMessage}
+                      </p>
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           </div>
 
@@ -98,37 +137,87 @@ export function CardFlipPreview({
                 alt={`${template.name} back preview`}
                 className="h-full w-full object-cover"
               />
-              <div className="pointer-events-none absolute inset-y-0 left-0 flex w-[50%] flex-col justify-center px-5 py-5">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex w-[52%] flex-col justify-between px-5 pb-4 pt-6">
                 {hasSenderInfo ? (
-                  <div className="space-y-1.5 rounded-xl p-3 backdrop-blur-sm">
+                  <div className="space-y-1.5">
                     {senderName ? (
-                      <p className="text-[11px] font-extrabold text-[#0B1F3D]">
+                      <p
+                        className="text-[11px] font-extrabold"
+                        style={{ color: backMeta.headingColor }}
+                      >
                         {senderName}
                       </p>
                     ) : null}
                     {senderTitle ? (
-                      <p className="text-[9px] font-bold uppercase tracking-wide text-[#557393]">
+                      <p
+                        className="text-[9px] font-bold uppercase tracking-wide"
+                        style={{ color: backMeta.bodyColor }}
+                      >
                         {senderTitle}
                       </p>
                     ) : null}
                     {phone ? (
-                      <p className="text-[9px] text-[#557393]">{phone}</p>
+                      <p
+                        className="text-[9px]"
+                        style={{ color: backMeta.bodyColor }}
+                      >
+                        {phone}
+                      </p>
                     ) : null}
                     {emailAddress ? (
-                      <p className="break-all text-[9px] text-[#557393]">
+                      <p
+                        className="break-all text-[9px]"
+                        style={{ color: backMeta.bodyColor }}
+                      >
                         {emailAddress}
                       </p>
                     ) : null}
                     {website ? (
                       <p
                         className="break-all text-[9px]"
-                        style={{ color: templateMeta.accentColor }}
+                        style={{ color: backMeta.accentColor }}
                       >
                         {website}
                       </p>
                     ) : null}
                   </div>
-                ) : null}
+                ) : (
+                  <div />
+                )}
+
+                <div className="flex items-end gap-3">
+                  <div
+                    className="grid h-14 w-14 place-items-center rounded-md border border-black/10 bg-white/90"
+                    aria-hidden
+                  >
+                    <div
+                      className="h-10 w-10"
+                      style={{
+                        backgroundImage:
+                          "repeating-linear-gradient(90deg,#111 0 2px,transparent 2px 4px),repeating-linear-gradient(0deg,#111 0 2px,transparent 2px 4px)",
+                        backgroundSize: "4px 4px",
+                        opacity: 0.85,
+                      }}
+                    />
+                  </div>
+                  <div
+                    className="flex h-10 min-w-[7rem] items-center gap-1.5 rounded-md px-2"
+                    style={{ backgroundColor: `${backMeta.accentColor}22` }}
+                  >
+                    <span
+                      className="grid h-6 w-6 place-items-center rounded-md text-[8px] font-black text-white"
+                      style={{ backgroundColor: backMeta.accentColor }}
+                    >
+                      E
+                    </span>
+                    <span
+                      className="text-[9px] font-extrabold tracking-tight"
+                      style={{ color: backMeta.headingColor }}
+                    >
+                      Everlia™
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -151,8 +240,8 @@ export function CardFlipPreview({
         {activeSide === "front" ? "Front Preview" : "Back Preview"}
       </p>
       <p className="text-center text-xs leading-relaxed text-[#557393]">
-        Preview is approximate. Final print artwork with QR code, profile photo,
-        and exact typography is generated on the next step.
+        Preview uses this design&apos;s print colors. Final artwork with live QR
+        and logo is generated when you save or a campaign mails.
       </p>
     </section>
   );

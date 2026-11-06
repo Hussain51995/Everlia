@@ -202,6 +202,44 @@ export async function processClaimedMailing(
       .limit(1)
       .maybeSingle();
 
+    const [{ data: branding }, { data: creator }] = await Promise.all([
+      admin
+        .from("organization_branding")
+        .select("logo_url, sender_display_name")
+        .eq("organization_id", mailing.organization_id)
+        .maybeSingle(),
+      admin
+        .from("profiles")
+        .select("first_name, last_name, phone")
+        .eq("id", context.campaign.created_by)
+        .maybeSingle(),
+    ]);
+
+    const baseFieldValues: GreetingCardFieldValues = {
+      ...((mailing.field_values ?? {}) as GreetingCardFieldValues),
+    };
+    const campaignConfig =
+      (context.campaign.configuration as Record<string, unknown> | null) ?? {};
+    const includeCompanyLogo = campaignConfig.includeCompanyLogo === true;
+    if (includeCompanyLogo && branding?.logo_url?.trim()) {
+      baseFieldValues.company_logo = branding.logo_url.trim();
+    } else {
+      delete baseFieldValues.company_logo;
+    }
+
+    const senderDisplay = branding?.sender_display_name?.trim();
+    const senderFirst =
+      creator?.first_name?.trim() ||
+      senderDisplay?.split(/\s+/)[0] ||
+      null;
+    const senderLast =
+      creator?.last_name?.trim() ||
+      (senderDisplay
+        ? senderDisplay.split(/\s+/).slice(1).join(" ") || null
+        : null) ||
+      context.organization.name ||
+      null;
+
     const personalized = personalizeCampaignCard({
       designConfig: context.template.design_config as DesignConfig,
       occasionSlug: context.occasion.occasion?.slug,
@@ -213,8 +251,12 @@ export async function processClaimedMailing(
         last_name: context.customer.last_name,
       },
       sender: {
-        first_name: null,
-        last_name: null,
+        first_name: senderFirst,
+        last_name: senderLast,
+        title: null,
+        phone: creator?.phone ?? null,
+        email: null,
+        website: null,
       },
       milestone: milestone
         ? {
@@ -224,7 +266,7 @@ export async function processClaimedMailing(
           }
         : null,
       campaignName: context.campaign.name,
-      baseFieldValues: (mailing.field_values ?? {}) as GreetingCardFieldValues,
+      baseFieldValues,
       asOf: new Date(`${mailing.occasion_date}T12:00:00Z`),
     });
 

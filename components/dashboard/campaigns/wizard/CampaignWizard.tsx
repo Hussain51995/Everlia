@@ -61,6 +61,7 @@ export function CampaignWizard() {
   const endDate = useCampaignWizardStore((s) => s.endDate);
   const timezone = useCampaignWizardStore((s) => s.timezone);
   const occasions = useCampaignWizardStore((s) => s.occasions);
+  const includeCompanyLogo = useCampaignWizardStore((s) => s.includeCompanyLogo);
   const reset = useCampaignWizardStore((s) => s.reset);
 
   const [durationError, setDurationError] = useState<string | null>(null);
@@ -140,6 +141,9 @@ export function CampaignWizard() {
           isEnabled: true,
           excludedCustomerIds: o.excludedCustomerIds,
         })),
+        configuration: {
+          includeCompanyLogo,
+        },
         activate,
       });
 

@@ -13,14 +13,7 @@ import { ApiClientError } from "@/lib/api/client";
 
 const CATEGORIES: Array<CardTemplateCategory | "all"> = [
   "all",
-  "birthday",
-  "thank_you",
-  "home_anniversary",
-  "holiday",
-  "congratulations",
-  "welcome_home",
-  "anniversary",
-  "customer_appreciation",
+  "general",
 ];
 
 export default function TemplatesPage() {
@@ -31,6 +24,11 @@ export default function TemplatesPage() {
   const filtered = useMemo(() => {
     if (!templates) return [];
     if (category === "all") return templates;
+    if (category === "general") {
+      return templates.filter(
+        (t) => t.category === "general" || /^design-\d+$/.test(t.slug)
+      );
+    }
     return templates.filter((t) => t.category === category);
   }, [templates, category]);
 
@@ -42,7 +40,8 @@ export default function TemplatesPage() {
             Greeting Card Templates
           </h1>
           <p className="mt-1 text-sm text-[#557393]">
-            Choose a professionally designed 4×6 postcard, then personalize approved fields.
+            Choose a blank 4×6 design. Campaign events add the heading, message,
+            QR, and logo automatically.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -114,13 +113,17 @@ export default function TemplatesPage() {
               </div>
               <div className="space-y-1 p-4">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-[#38B2D1]">
-                  {TEMPLATE_CATEGORY_LABELS[template.category]}
+                  {template.category === "general" ||
+                  /^design-\d+$/.test(template.slug)
+                    ? TEMPLATE_CATEGORY_LABELS.general
+                    : TEMPLATE_CATEGORY_LABELS[template.category]}
                 </div>
                 <h3 className="text-base font-extrabold text-[#0B1F3D]">
                   {template.name}
                 </h3>
                 <p className="text-xs text-[#557393]">
-                  Customize name, message, branding & QR — then send.
+                  Text-free master — content is added when you personalize or
+                  when a campaign event sends.
                 </p>
               </div>
             </Link>

@@ -137,6 +137,7 @@ export function personalizeCampaignCard(
     message: copy.message,
     footer: copy.footer,
     recipientDisplayName,
+    recipientFirstName: input.customer.first_name,
     base,
   });
 

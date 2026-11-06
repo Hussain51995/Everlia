@@ -12,6 +12,9 @@ type BackStepProps = {
   onEmailAddressChange: (value: string) => void;
   website: string;
   onWebsiteChange: (value: string) => void;
+  includeCompanyLogo: boolean;
+  onIncludeCompanyLogoChange: (value: boolean) => void;
+  brandingLogoUrl: string | null;
   onBack: () => void;
   isSaving: boolean;
 };
@@ -28,9 +31,14 @@ export function BackStep({
   onEmailAddressChange,
   website,
   onWebsiteChange,
+  includeCompanyLogo,
+  onIncludeCompanyLogoChange,
+  brandingLogoUrl,
   onBack,
   isSaving,
 }: BackStepProps) {
+  const hasOrgLogo = Boolean(brandingLogoUrl);
+
   return (
     <fieldset
       disabled={disabled}
@@ -105,6 +113,51 @@ export function BackStep({
             />
           </label>
         </div>
+      </div>
+
+      <div className="space-y-3 rounded-2xl border border-[#C4EBF2] bg-[#F8FCFD] p-4">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-[#557393]">
+          Branding
+        </p>
+        {hasOrgLogo ? (
+          <label className="flex cursor-pointer items-start gap-3">
+            <input
+              type="checkbox"
+              checked={includeCompanyLogo}
+              onChange={(e) => onIncludeCompanyLogoChange(e.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-[#C4EBF2] text-[#38B2D1] focus:ring-[#38B2D1]"
+            />
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center gap-3">
+                <img
+                  src={brandingLogoUrl!}
+                  alt=""
+                  className="h-10 w-10 shrink-0 rounded-lg border border-[#C4EBF2] bg-white object-contain p-0.5"
+                />
+                <span>
+                  <span className="block text-sm font-bold text-[#0B1F3D]">
+                    Add organization logo on the back
+                  </span>
+                  <span className="mt-0.5 block text-xs text-[#557393]">
+                    Places your saved logo next to the QR when artwork is
+                    generated.
+                  </span>
+                </span>
+              </span>
+            </span>
+          </label>
+        ) : (
+          <p className="text-xs text-[#557393]">
+            No organization logo is set yet.{" "}
+            <a
+              href="/dashboard/settings/branding"
+              className="font-bold text-[#38B2D1] hover:underline"
+            >
+              Add one in branding settings
+            </a>{" "}
+            to enable this option.
+          </p>
+        )}
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">

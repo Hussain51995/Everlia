@@ -156,6 +156,20 @@ export type CampaignMailing = {
     first_name: string;
     last_name: string;
   } | null;
+  greeting_card?: {
+    id: string;
+    status: string;
+    front_artwork_url: string | null;
+    back_artwork_url: string | null;
+  } | null;
+  campaign_occasion?: {
+    id: string;
+    message_template: string | null;
+    occasion?: {
+      slug: string;
+      name: string;
+    } | null;
+  } | null;
 };
 
 export type CampaignBillingProfile = {

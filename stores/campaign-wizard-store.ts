@@ -29,9 +29,11 @@ export type CampaignWizardState = {
   endDate: string;
   timezone: string;
   occasions: WizardOccasionDraft[];
+  includeCompanyLogo: boolean;
   draftCampaignId: string | null;
   setStep: (step: WizardStep) => void;
   setTemplateId: (id: string | null) => void;
+  setIncludeCompanyLogo: (value: boolean) => void;
   setCustomerIds: (ids: string[]) => void;
   toggleCustomer: (id: string) => void;
   setSelectAllEligible: (value: boolean) => void;
@@ -67,6 +69,7 @@ const defaults = () => {
     endDate: dates.endDate,
     timezone: "America/New_York",
     occasions: [] as WizardOccasionDraft[],
+    includeCompanyLogo: false,
     draftCampaignId: null as string | null,
   };
 };
@@ -77,6 +80,7 @@ export const useCampaignWizardStore = create<CampaignWizardState>()(
       ...defaults(),
       setStep: (step) => set({ step }),
       setTemplateId: (templateId) => set({ templateId }),
+      setIncludeCompanyLogo: (includeCompanyLogo) => set({ includeCompanyLogo }),
       setCustomerIds: (customerIds) => set({ customerIds, selectAllEligible: false }),
       toggleCustomer: (id) => {
         const current = get().customerIds;
@@ -118,6 +122,7 @@ export const useCampaignWizardStore = create<CampaignWizardState>()(
         endDate: state.endDate,
         timezone: state.timezone,
         occasions: state.occasions,
+        includeCompanyLogo: state.includeCompanyLogo,
         draftCampaignId: state.draftCampaignId,
       }),
     }

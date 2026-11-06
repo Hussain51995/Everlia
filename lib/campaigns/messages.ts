@@ -50,106 +50,118 @@ export function parseMessageOverride(
   return { greetingTemplate: trimmed };
 }
 
+
 export const DEFAULT_OCCASION_MESSAGES: Record<string, OccasionMessageDefinition> =
   {
     birthday: {
       slug: "birthday",
-      greetingTemplate: "Happy Birthday, {{customer.firstName}}!",
+      greetingTemplate: "Happy Birthday!",
       messageTemplate:
-        "Wishing you a wonderful day filled with joy. Thank you for trusting us with your home journey.",
-      footerTemplate: "THANK YOU FOR BEING A VALUED CLIENT.",
+        "May your special day be filled with laughter, love, and beautiful moments. We're grateful to have been a small part of your journey, and we wish you a year filled with happiness and new beginnings.",
+      footerTemplate: "WISHING YOU A YEAR AS WONDERFUL AS YOU ARE.",
     },
+
     "home-anniversary": {
       slug: "home-anniversary",
-      greetingTemplate:
-        "Celebrating {{milestone.years}} years in your home, {{customer.firstName}}!",
+      greetingTemplate: "Happy Home Anniversary!",
       messageTemplate:
-        "Celebrating {{milestone.years}} years since your home closing! Here's to many more memories under that roof.",
-      footerTemplate: "ONE MORE YEAR OF MAKING MEMORIES.",
+        "It's been {{milestone.years}} wonderful years since you turned a house into your home! May every corner continue to hold beautiful memories, every room echo with laughter, and every year bring even more reasons to love the place you call home.",
+      footerTemplate: "HERE'S TO THE MEMORIES MADE AND MANY MORE TO COME.",
     },
+
     "closing-anniversary": {
       slug: "closing-anniversary",
-      greetingTemplate:
-        "Happy closing anniversary, {{customer.firstName}}!",
+      greetingTemplate: "Happy Closing Anniversary!",
       messageTemplate:
-        "Celebrating {{milestone.years}} years since your home closing!",
-      footerTemplate: "GRATEFUL TO BE PART OF YOUR STORY.",
+        "Can you believe it's been {{milestone.years}} years since we celebrated this special milestone together? Helping you take that step was an honor, and we hope your home continues to bring you comfort, happiness, and countless beautiful memories.",
+      footerTemplate: "GRATEFUL TO HAVE BEEN PART OF YOUR JOURNEY.",
     },
+
     "us-thanksgiving": {
       slug: "us-thanksgiving",
-      greetingTemplate: "Happy Thanksgiving, {{customer.firstName}}!",
+      greetingTemplate: "A Very Happy Thanksgiving!",
       messageTemplate:
-        "Wishing you and your family a wonderful Thanksgiving!",
-      footerTemplate: "WITH GRATITUDE FROM OUR TEAM.",
+        "This season reminds us how much the people in our lives truly matter. We're thankful for the trust you've placed in us and the opportunity to be part of your story. May your home be filled with warmth, your table with joy, and your heart with gratitude.",
+      footerTemplate: "WITH HEARTFELT GRATITUDE, FROM OUR FAMILY TO YOURS.",
     },
+
     "us-christmas": {
       slug: "us-christmas",
-      greetingTemplate: "Warm holiday wishes, {{customer.firstName}}!",
+      greetingTemplate: "Wishing You a Magical Christmas!",
       messageTemplate:
-        "Wishing you and your loved ones a joyful holiday season and a bright New Year.",
-      footerTemplate: "MAY THIS SEASON BRING YOU JOY & PEACE.",
+        "May your home glow with the warmth of the holidays, your days be filled with laughter, and your hearts be surrounded by love. Thank you for being part of our journey. Wishing you and your family a Christmas filled with moments worth remembering.",
+      footerTemplate: "MAY YOUR HOME ALWAYS BE FILLED WITH LOVE AND JOY.",
     },
+
     "us-mothers-day": {
       slug: "us-mothers-day",
       greetingTemplate: "Happy Mother's Day!",
       messageTemplate:
-        "Celebrating the care and love you bring to home and family.",
-      footerTemplate: "THINKING OF YOU THIS MOTHER'S DAY.",
+        "A home is made special by the love, care, and countless little things that happen within it. Today, we celebrate the wonderful mothers who make every house feel like home. May your day be filled with the appreciation and love you deserve.",
+      footerTemplate: "CELEBRATING THE LOVE THAT MAKES A HOUSE A HOME.",
     },
+
     "us-fathers-day": {
       slug: "us-fathers-day",
       greetingTemplate: "Happy Father's Day!",
       messageTemplate:
-        "Celebrating the people who make a house feel like home.",
-      footerTemplate: "THINKING OF YOU THIS FATHER'S DAY.",
+        "Behind every strong home is someone who gives their time, love, and strength to make life better for those they care about. Today, we celebrate all that you do and the lasting memories you help create. Wishing you a wonderful Father's Day!",
+      footerTemplate: "HONORING THE HEART THAT BUILDS A HOME.",
     },
+
     "us-independence-day": {
       slug: "us-independence-day",
-      greetingTemplate: "Happy Independence Day!",
+      greetingTemplate: "Happy Fourth of July!",
       messageTemplate:
-        "Wishing you a safe and joyful Fourth of July celebration.",
-      footerTemplate: "PROUD TO SERVE OUR COMMUNITY.",
+        "Today, we celebrate the freedom to dream, the courage to build, and the communities we proudly call home. Wishing you and your loved ones a joyful celebration filled with laughter, meaningful moments, and lasting memories.",
+      footerTemplate: "CELEBRATING FREEDOM, COMMUNITY, AND HOME.",
     },
+
     "us-memorial-day": {
       slug: "us-memorial-day",
-      greetingTemplate: "Remembering with gratitude",
+      greetingTemplate: "Honoring and Remembering",
       messageTemplate:
-        "Wishing you a peaceful Memorial Day weekend with family and friends.",
-      footerTemplate: "WITH RESPECT AND APPRECIATION.",
+        "This Memorial Day, we pause to honor the brave men and women who made the ultimate sacrifice for our freedom. May we always remember their courage and cherish the peace and opportunities they made possible.",
+      footerTemplate: "WITH DEEPEST RESPECT AND GRATITUDE.",
     },
+
     "us-labor-day": {
       slug: "us-labor-day",
-      greetingTemplate: "Happy Labor Day!",
+      greetingTemplate: "Wishing You a Happy Labor Day!",
       messageTemplate:
-        "Wishing you a restful Labor Day and a wonderful end of summer.",
-      footerTemplate: "ENJOY THE LONG WEEKEND.",
+        "Every dream, every achievement, and every beautiful home begins with dedication and hard work. Today, we celebrate your efforts and the people who make our communities stronger. We hope you enjoy a well-deserved day of rest with those you love.",
+      footerTemplate: "HERE'S TO YOUR HARD WORK AND ALL YOU MAKE POSSIBLE.",
     },
+
     "us-new-years-day": {
       slug: "us-new-years-day",
-      greetingTemplate: "Happy New Year, {{customer.firstName}}!",
+      greetingTemplate: "Here's to a Beautiful New Year!",
       messageTemplate:
-        "Wishing you a healthy, happy year ahead in the home you love.",
-      footerTemplate: "CHEERS TO NEW BEGINNINGS.",
+        "A new year brings fresh opportunities, new dreams, and countless moments waiting to become memories. We're truly grateful to have you as part of our community. May the year ahead bring happiness, good health, and warmth to the home you love.",
+      footerTemplate: "NEW YEAR, NEW MEMORIES, ENDLESS POSSIBILITIES.",
     },
+
     "us-valentines-day": {
       slug: "us-valentines-day",
-      greetingTemplate: "Happy Valentine's Day!",
+      greetingTemplate: "Sending You Love This Valentine's Day!",
       messageTemplate:
-        "Sending warm wishes to you and your loved ones this Valentine's Day.",
-      footerTemplate: "FROM OUR HOME TO YOURS.",
+        "Home is where love lives, laughter echoes, and the most meaningful memories are made. This Valentine's Day, we're sending warm wishes to you and everyone who makes your house feel like home. May your day be filled with love in all its beautiful forms.",
+      footerTemplate: "CELEBRATING LOVE, ONE HOME AT A TIME.",
     },
+
     custom: {
       slug: "custom",
-      greetingTemplate: "Thinking of you, {{customer.firstName}}!",
+      greetingTemplate: "Just a Little Note of Appreciation",
       messageTemplate:
-        "Just a note to stay in touch and say thank you for being a valued client.",
-      footerTemplate: "WITH APPRECIATION.",
+        "Some relationships are too meaningful to be limited to a single transaction. We simply wanted to reach out, let you know we're thinking of you, and say how much we appreciate having you as part of our journey. Whenever you need us, we're just a message away.",
+      footerTemplate: "MORE THAN CLIENTS, ALWAYS PART OF OUR COMMUNITY.",
     },
   };
 
+
 export const FALLBACK_OCCASION_MESSAGE: OccasionMessageDefinition = {
   slug: "custom",
-  greetingTemplate: "Thinking of you, {{customer.firstName}}!",
+  greetingTemplate: "Thinking of You!",
   messageTemplate:
     "Just a note to stay in touch and say thank you for being a valued client.",
   footerTemplate: "WITH APPRECIATION.",

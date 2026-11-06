@@ -153,8 +153,53 @@ export function StepOccasions() {
   }, [tiles, categoryFilter]);
 
   const selectedCount = occasions.filter((o) => o.isEnabled).length;
+  const visibleCatalog = useMemo(
+    () =>
+      visibleTiles
+        .map((t) => t.catalog)
+        .filter((o): o is OccasionDefinition => Boolean(o)),
+    [visibleTiles]
+  );
+  const allVisibleSelected =
+    visibleCatalog.length > 0 &&
+    visibleCatalog.every((o) =>
+      occasions.some((d) => d.occasionSlug === o.slug && d.isEnabled)
+    );
   const editingOccasion =
     occasions.find((o) => o.key === editingKey) ?? null;
+
+  const selectAllVisible = () => {
+    const visibleSlugs = new Set(visibleCatalog.map((o) => o.slug));
+    const kept = occasions.filter(
+      (o) => !o.occasionSlug || !visibleSlugs.has(o.occasionSlug)
+    );
+    const selectedVisible: WizardOccasionDraft[] = visibleCatalog.map((o) => {
+      const existing = occasions.find((d) => d.occasionSlug === o.slug);
+      if (existing) {
+        return { ...existing, isEnabled: true };
+      }
+      return {
+        key: o.slug,
+        occasionId: o.id,
+        occasionSlug: o.slug,
+        name: o.name,
+        category: o.category,
+        leadDays: o.defaultLeadDays ?? 7,
+        isEnabled: true,
+        excludedCustomerIds: [],
+      };
+    });
+    setOccasions([...kept, ...selectedVisible]);
+  };
+
+  const clearVisibleSelection = () => {
+    const visibleSlugs = new Set(visibleCatalog.map((o) => o.slug));
+    setOccasions(
+      occasions.filter(
+        (o) => !o.occasionSlug || !visibleSlugs.has(o.occasionSlug)
+      )
+    );
+  };
 
   const ensureAndEdit = (tile: TileModel) => {
     if (tile.draft) {
@@ -187,7 +232,7 @@ export function StepOccasions() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-sm text-[#557393]">
             Pick occasions as tiles. Hover for a quick peek — click to edit lead
@@ -196,6 +241,27 @@ export function StepOccasions() {
           <p className="mt-1 text-xs font-bold text-[#0B1F3D]">
             {selectedCount} enabled · {occasions.length} selected
           </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={selectAllVisible}
+            disabled={!visibleCatalog.length || allVisibleSelected}
+            className="rounded-full border border-[#38B2D1] bg-[#F0FAFC] px-3 py-1.5 text-xs font-bold text-[#0B1F3D] transition hover:bg-[#E6F7FB] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Select all
+            {categoryFilter ? ` (${visibleCatalog.length})` : ""}
+          </button>
+          <button
+            type="button"
+            onClick={clearVisibleSelection}
+            disabled={!visibleCatalog.some((o) =>
+              occasions.some((d) => d.occasionSlug === o.slug)
+            )}
+            className="rounded-full border border-[#C4EBF2] bg-white px-3 py-1.5 text-xs font-bold text-[#557393] transition hover:bg-[#F8FBFC] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Clear
+          </button>
         </div>
       </div>
 
