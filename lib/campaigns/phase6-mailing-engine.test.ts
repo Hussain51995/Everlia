@@ -109,11 +109,11 @@ describe("Phase 6 migration + cron surface", () => {
     expect(src).toContain("liveMailEnabled: false");
   });
 
-  it("UNIT_PASS: vercel cron schedule configured hourly", () => {
+  it("UNIT_PASS: vercel cron schedule configured daily (Hobby-compatible)", () => {
     const vercel = JSON.parse(
       readFileSync(join(process.cwd(), "vercel.json"), "utf8")
     ) as { crons: Array<{ path: string; schedule: string }> };
     expect(vercel.crons[0].path).toBe("/api/cron/campaign-mailings");
-    expect(vercel.crons[0].schedule).toBe("0 * * * *");
+    expect(vercel.crons[0].schedule).toBe("0 0 * * *");
   });
 });
