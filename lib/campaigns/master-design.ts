@@ -44,12 +44,26 @@ export function analyzeMasterDesign(config: DesignConfig): MasterDesignFieldMap 
   };
 }
 
+export function formatDearCustomerName(
+  firstName?: string | null,
+  displayName?: string | null
+): string {
+  const fromFirst = firstName?.trim();
+  if (fromFirst) return `Dear ${fromFirst}`;
+
+  const fromDisplay = displayName?.trim().split(/\s+/).filter(Boolean)[0];
+  if (fromDisplay) return `Dear ${fromDisplay}`;
+
+  return "Dear Friend";
+}
+
 export function mapCopyToFieldValues(options: {
   designConfig: DesignConfig;
   greeting: string;
   message: string;
   footer: string;
   recipientDisplayName?: string;
+  recipientFirstName?: string;
   base?: GreetingCardFieldValues;
 }): GreetingCardFieldValues {
   const map = analyzeMasterDesign(options.designConfig);
@@ -58,8 +72,10 @@ export function mapCopyToFieldValues(options: {
   if (map.hasOccasionHeading) {
     values.occasion_heading = options.greeting;
     if (map.hasCustomerName) {
-      values.customer_name =
-        options.recipientDisplayName?.trim() || values.customer_name;
+      values.customer_name = formatDearCustomerName(
+        options.recipientFirstName,
+        options.recipientDisplayName
+      );
     }
   } else if (map.hasCustomerName) {
     values.customer_name = options.greeting;

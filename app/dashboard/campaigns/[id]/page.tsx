@@ -8,6 +8,7 @@ import {
   useCancelCampaign,
   useCampaign,
   useCampaignActivity,
+  useCampaignArtworkPreview,
   useCampaignMailings,
   useCampaignUsage,
   useDeleteCampaign,
@@ -17,6 +18,10 @@ import {
   useUpdateCampaign,
 } from "@/hooks/campaigns";
 import { FreeTestingBanner } from "@/components/dashboard/campaigns/FreeTestingBanner";
+import {
+  CardArtworkLightbox,
+  type ArtworkLightboxSource,
+} from "@/components/dashboard/campaigns/CardArtworkLightbox";
 import { ApiClientError } from "@/lib/api/client";
 import { useToast } from "@/components/ui/Toast";
 import { ThemeLoader } from "@/components/ui/ThemeLoader";
@@ -29,7 +34,10 @@ import {
   secondaryButtonClass,
   textInputClass,
 } from "@/components/dashboard/campaigns/shared";
-import type { CampaignMailingStatus } from "@/lib/types/campaigns";
+import type {
+  CampaignMailing,
+  CampaignMailingStatus,
+} from "@/lib/types/campaigns";
 
 export default function CampaignDetailPage() {
   const params = useParams<{ id: string }>();
@@ -38,8 +46,20 @@ export default function CampaignDetailPage() {
   const { showToast } = useToast();
 
   const { data: campaign, isLoading, refetch } = useCampaign(id);
-  const { data: upcoming } = useCampaignMailings(id, "upcoming");
-  const { data: history } = useCampaignMailings(id, "history");
+  const {
+    data: upcoming,
+    isLoading: upcomingLoading,
+    isError: upcomingError,
+    error: upcomingErr,
+    refetch: refetchUpcoming,
+  } = useCampaignMailings(id, "upcoming");
+  const {
+    data: history,
+    isLoading: historyLoading,
+    isError: historyError,
+    error: historyErr,
+    refetch: refetchHistory,
+  } = useCampaignMailings(id, "history");
   const { data: activity } = useCampaignActivity(id);
   const { data: usagePayload } = useCampaignUsage(id);
 
@@ -58,11 +78,56 @@ export default function CampaignDetailPage() {
   const [tab, setTab] = useState<"upcoming" | "history" | "customers" | "activity">(
     "upcoming"
   );
+  const [lightbox, setLightbox] = useState<ArtworkLightboxSource | null>(null);
+  const samplePreview = useCampaignArtworkPreview();
 
   const statusCounts = useMemo(
     () => campaign?.mailing_status_counts ?? {},
     [campaign]
   );
+
+  const handleSamplePreview = async (mailing: CampaignMailing) => {
+    if (!campaign) return;
+    const occasionRel = mailing.campaign_occasion?.occasion;
+    const occasion = Array.isArray(occasionRel) ? occasionRel[0] : occasionRel;
+    const customerLabel = mailing.customer
+      ? `${mailing.customer.first_name} ${mailing.customer.last_name}`
+      : "Customer";
+
+    try {
+      const result = await samplePreview.mutateAsync({
+        mailingId: mailing.id,
+        templateId: mailing.template_id || campaign.default_template_id,
+        customerId: mailing.customer_id,
+        occasionSlug: occasion?.slug,
+        occasionName: occasion?.name,
+        messageTemplateOverride:
+          mailing.campaign_occasion?.message_template ?? null,
+        campaignName: campaign.name,
+        customerLabel,
+        includeCompanyLogo:
+          (campaign.configuration as Record<string, unknown> | null)
+            ?.includeCompanyLogo === true,
+      });
+
+      setLightbox({
+        title: customerLabel,
+        subtitle: `Sample · ${mailing.occasion_date} · send ${mailing.send_on}`,
+        frontUrl: `data:image/png;base64,${result.artwork.frontPngBase64}`,
+        backUrl: `data:image/png;base64,${result.artwork.backPngBase64}`,
+        isSample: true,
+      });
+    } catch (error) {
+      showToast({
+        tone: "error",
+        title: "Sample preview failed",
+        description:
+          error instanceof ApiClientError
+            ? error.message
+            : "Could not compose a sample card.",
+      });
+    }
+  };
 
   const runAction = async (
     label: string,
@@ -363,10 +428,84 @@ export default function CampaignDetailPage() {
 
             <div className="mt-4">
               {tab === "upcoming" ? (
-                <MailingsTable rows={upcoming ?? []} empty="No upcoming mailings." />
+                upcomingLoading ? (
+                  <div className="py-8">
+                    <ThemeLoader label="Loading upcoming mailings…" />
+                  </div>
+                ) : upcomingError ? (
+                  <MailingsLoadError
+                    message={
+                      upcomingErr instanceof ApiClientError
+                        ? upcomingErr.message
+                        : "Could not load upcoming mailings."
+                    }
+                    onRetry={() => void refetchUpcoming()}
+                  />
+                ) : (
+                  <MailingsTable
+                    rows={upcoming ?? []}
+                    empty={
+                      campaign.status === "draft"
+                        ? "No upcoming mailings yet — activate this campaign to generate the schedule."
+                        : (statusCounts.planned ?? 0) > 0
+                          ? "Planned mailings exist but could not be listed. Try refresh."
+                          : (history?.length ?? 0) > 0
+                            ? "No upcoming mailings. Check History for skipped or already-sent jobs."
+                            : "No upcoming mailings. Confirm enrolled customers, enabled occasions, and that milestone dates fall inside the campaign window."
+                    }
+                    templateId={campaign.default_template_id}
+                    campaignName={campaign.name}
+                    sampleLoadingId={
+                      samplePreview.isPending
+                        ? (
+                            samplePreview.variables as
+                              | { mailingId?: string }
+                              | undefined
+                          )?.mailingId ?? null
+                        : null
+                    }
+                    onOpenArtwork={setLightbox}
+                    onSamplePreview={(mailing) =>
+                      void handleSamplePreview(mailing)
+                    }
+                  />
+                )
               ) : null}
               {tab === "history" ? (
-                <MailingsTable rows={history ?? []} empty="No mailing history yet." />
+                historyLoading ? (
+                  <div className="py-8">
+                    <ThemeLoader label="Loading mailing history…" />
+                  </div>
+                ) : historyError ? (
+                  <MailingsLoadError
+                    message={
+                      historyErr instanceof ApiClientError
+                        ? historyErr.message
+                        : "Could not load mailing history."
+                    }
+                    onRetry={() => void refetchHistory()}
+                  />
+                ) : (
+                  <MailingsTable
+                    rows={history ?? []}
+                    empty="No mailing history yet."
+                    templateId={campaign.default_template_id}
+                    campaignName={campaign.name}
+                    sampleLoadingId={
+                      samplePreview.isPending
+                        ? (
+                            samplePreview.variables as
+                              | { mailingId?: string }
+                              | undefined
+                          )?.mailingId ?? null
+                        : null
+                    }
+                    onOpenArtwork={setLightbox}
+                    onSamplePreview={(mailing) =>
+                      void handleSamplePreview(mailing)
+                    }
+                  />
+                )
               ) : null}
               {tab === "customers" ? (
                 <div className="space-y-2">
@@ -529,6 +668,33 @@ export default function CampaignDetailPage() {
           ) : null}
         </div>
       </div>
+
+      <CardArtworkLightbox
+        source={lightbox}
+        onClose={() => setLightbox(null)}
+      />
+    </div>
+  );
+}
+
+function MailingsLoadError({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
+      <p className="text-sm font-bold text-rose-900">Could not load mailings</p>
+      <p className="mt-1 text-xs text-rose-800">{message}</p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="mt-3 rounded-xl border border-rose-300 bg-white px-3 py-1.5 text-xs font-bold text-rose-800 hover:bg-rose-100"
+      >
+        Retry
+      </button>
     </div>
   );
 }
@@ -536,51 +702,133 @@ export default function CampaignDetailPage() {
 function MailingsTable({
   rows,
   empty,
+  sampleLoadingId,
+  onOpenArtwork,
+  onSamplePreview,
 }: {
-  rows: Array<{
-    id: string;
-    occasion_date: string;
-    send_on: string;
-    status: CampaignMailingStatus;
-    skip_reason: string | null;
-    customer?: { first_name: string; last_name: string } | null;
-  }>;
+  rows: CampaignMailing[];
   empty: string;
+  templateId?: string;
+  campaignName?: string;
+  sampleLoadingId: string | null;
+  onOpenArtwork: (source: ArtworkLightboxSource) => void;
+  onSamplePreview: (mailing: CampaignMailing) => void;
 }) {
   if (!rows.length) {
     return <p className="text-sm text-[#557393]">{empty}</p>;
   }
+
   return (
-    <div className="max-h-[420px] overflow-auto">
-      <table className="w-full min-w-[520px] text-left text-xs">
+    <div className="max-h-[480px] overflow-auto">
+      <table className="w-full min-w-[640px] text-left text-xs">
         <thead className="text-[#557393]">
           <tr>
+            <th className="pb-2 font-bold">Card</th>
             <th className="pb-2 font-bold">Customer</th>
             <th className="pb-2 font-bold">Occasion</th>
             <th className="pb-2 font-bold">Send on</th>
             <th className="pb-2 font-bold">Status</th>
+            <th className="pb-2 font-bold">Actions</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr key={row.id} className="border-t border-[#C4EBF2]">
-              <td className="py-2 font-medium text-[#0B1F3D]">
-                {row.customer
-                  ? `${row.customer.first_name} ${row.customer.last_name}`
-                  : "—"}
-              </td>
-              <td className="py-2">{row.occasion_date}</td>
-              <td className="py-2">{row.send_on}</td>
-              <td className="py-2">
-                <MailingStatusBadge status={row.status} />
-                {row.skip_reason ? (
-                  <p className="mt-0.5 text-[10px] text-[#557393]">
-                    {row.skip_reason}
-                  </p>
-                ) : null}
-              </td>
-            </tr>
-          ))}
+          {rows.map((row) => {
+            const card = row.greeting_card;
+            const frontUrl = card?.front_artwork_url ?? null;
+            const backUrl = card?.back_artwork_url ?? null;
+            const hasArtwork = Boolean(frontUrl);
+            const customerLabel = row.customer
+              ? `${row.customer.first_name} ${row.customer.last_name}`
+              : "—";
+            const loadingSample = sampleLoadingId === row.id;
+
+            return (
+              <tr key={row.id} className="border-t border-[#C4EBF2]">
+                <td className="py-2 pr-2">
+                  {hasArtwork ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onOpenArtwork({
+                          title: customerLabel,
+                          subtitle: `${row.occasion_date} · send ${row.send_on}`,
+                          frontUrl,
+                          backUrl,
+                          cardId: card?.id,
+                        })
+                      }
+                      className="block h-12 w-[72px] overflow-hidden rounded-lg border border-[#C4EBF2] bg-[#F0FAFC] transition hover:ring-2 hover:ring-[#38B2D1]/40"
+                      title="View artwork"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={frontUrl!}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    </button>
+                  ) : (
+                    <div className="grid h-12 w-[72px] place-items-center rounded-lg border border-dashed border-[#C4EBF2] bg-[#F8FCFD] px-1 text-center text-[9px] font-semibold leading-tight text-[#557393]">
+                      Artwork pending
+                    </div>
+                  )}
+                </td>
+                <td className="py-2 font-medium text-[#0B1F3D]">
+                  {customerLabel}
+                </td>
+                <td className="py-2">{row.occasion_date}</td>
+                <td className="py-2">{row.send_on}</td>
+                <td className="py-2">
+                  <MailingStatusBadge status={row.status as CampaignMailingStatus} />
+                  {row.skip_reason ? (
+                    <p className="mt-0.5 text-[10px] text-[#557393]">
+                      {row.skip_reason}
+                    </p>
+                  ) : null}
+                </td>
+                <td className="py-2">
+                  <div className="flex flex-wrap gap-2">
+                    {hasArtwork ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onOpenArtwork({
+                              title: customerLabel,
+                              subtitle: `${row.occasion_date} · send ${row.send_on}`,
+                              frontUrl,
+                              backUrl,
+                              cardId: card?.id,
+                            })
+                          }
+                          className="text-[11px] font-bold text-[#38B2D1] hover:underline"
+                        >
+                          Preview
+                        </button>
+                        {card?.id ? (
+                          <Link
+                            href={`/dashboard/cards/${card.id}`}
+                            className="text-[11px] font-bold text-[#0B1F3D] hover:underline"
+                          >
+                            View card
+                          </Link>
+                        ) : null}
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={loadingSample}
+                        onClick={() => onSamplePreview(row)}
+                        className="text-[11px] font-bold text-[#38B2D1] hover:underline disabled:opacity-50"
+                      >
+                        {loadingSample ? "Composing…" : "Sample preview"}
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

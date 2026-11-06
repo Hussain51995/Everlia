@@ -2,9 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import {
-  useCards,
-} from "@/hooks/cards";
+import { useCards } from "@/hooks/cards";
 import { CARD_STATUS_LABELS, type GreetingCardStatus } from "@/lib/types/cards";
 import { ThemeLoader } from "@/components/ui/ThemeLoader";
 import { RefetchButton } from "@/components/ui/RefetchButton";
@@ -23,17 +21,24 @@ const STATUS_COLORS: Partial<Record<GreetingCardStatus, string>> = {
 
 export default function CardsListPage() {
   const { data: cards, isLoading, error, refetch, isFetching } = useCards();
-  const [filter, setFilter] = useState<"all" | "draft" | "sent">("all");
+  const [filter, setFilter] = useState<"all" | "draft" | "sent" | "campaign">(
+    "all"
+  );
 
   const filtered = useMemo(() => {
     if (!cards) return [];
     if (filter === "draft") {
-      return cards.filter((c) => c.status === "draft" || c.status === "ready_to_send");
+      return cards.filter(
+        (c) => c.status === "draft" || c.status === "ready_to_send"
+      );
     }
     if (filter === "sent") {
       return cards.filter(
         (c) => c.status !== "draft" && c.status !== "ready_to_send"
       );
+    }
+    if (filter === "campaign") {
+      return cards.filter((c) => Boolean(c.campaign_id));
     }
     return cards;
   }, [cards, filter]);
@@ -44,7 +49,7 @@ export default function CardsListPage() {
         <div>
           <h1 className="text-2xl font-extrabold text-[#0B1F3D]">My Cards</h1>
           <p className="mt-1 text-sm text-[#557393]">
-            Track drafts, mail status, QR scans, and responses.
+            Track drafts, campaign-generated artwork, mail status, and QR scans.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -61,8 +66,8 @@ export default function CardsListPage() {
         </div>
       </div>
 
-      <div className="flex gap-2">
-        {(["all", "draft", "sent"] as const).map((f) => (
+      <div className="flex flex-wrap gap-2">
+        {(["all", "draft", "sent", "campaign"] as const).map((f) => (
           <button
             key={f}
             type="button"
@@ -84,7 +89,9 @@ export default function CardsListPage() {
         </div>
       ) : error ? (
         <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
-          {error instanceof ApiClientError ? error.message : "Failed to load cards"}
+          {error instanceof ApiClientError
+            ? error.message
+            : "Failed to load cards"}
         </div>
       ) : filtered.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-[#C4EBF2] bg-white p-10 text-center">
@@ -101,6 +108,7 @@ export default function CardsListPage() {
           <table className="w-full text-left text-sm">
             <thead className="border-b border-[#C4EBF2] bg-[#F0FAFC] text-[11px] uppercase tracking-wider text-[#557393]">
               <tr>
+                <th className="px-4 py-3 font-bold">Artwork</th>
                 <th className="px-4 py-3 font-bold">Recipient</th>
                 <th className="px-4 py-3 font-bold">Template</th>
                 <th className="px-4 py-3 font-bold">Status</th>
@@ -117,11 +125,31 @@ export default function CardsListPage() {
                   | { name?: string }
                   | null
                   | undefined;
+                const fromCampaign = Boolean(card.campaign_id);
+
                 return (
                   <tr
                     key={card.id}
                     className="border-b border-[#EEF6F8] last:border-0 hover:bg-[#F8FCFD]"
                   >
+                    <td className="px-4 py-3">
+                      <Link
+                        href={`/dashboard/cards/${card.id}`}
+                        className="block h-14 w-[84px] overflow-hidden rounded-xl border border-[#C4EBF2] bg-[#F0FAFC]"
+                      >
+                        {card.front_artwork_url ? (
+                          <img
+                            src={card.front_artwork_url}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <span className="grid h-full place-items-center px-1 text-center text-[9px] font-semibold text-[#557393]">
+                            No art yet
+                          </span>
+                        )}
+                      </Link>
+                    </td>
                     <td className="px-4 py-3">
                       <Link
                         href={`/dashboard/cards/${card.id}`}
@@ -131,6 +159,11 @@ export default function CardsListPage() {
                           .filter(Boolean)
                           .join(" ") || "Recipient"}
                       </Link>
+                      {fromCampaign ? (
+                        <span className="mt-1 inline-flex rounded-full bg-[#E8F7FB] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#0B8DB5]">
+                          Campaign
+                        </span>
+                      ) : null}
                     </td>
                     <td className="px-4 py-3 text-[#557393]">
                       {template?.name ?? "Template"}
@@ -138,7 +171,8 @@ export default function CardsListPage() {
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ${
-                          STATUS_COLORS[card.status] ?? "bg-slate-100 text-slate-700"
+                          STATUS_COLORS[card.status] ??
+                          "bg-slate-100 text-slate-700"
                         }`}
                       >
                         {CARD_STATUS_LABELS[card.status]}

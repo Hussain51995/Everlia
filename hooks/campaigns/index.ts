@@ -356,3 +356,51 @@ export function useCampaignQuote() {
       }>("/api/campaigns/quote", { method: "POST", body: input }),
   });
 }
+
+export type CampaignArtworkPreviewResult = {
+  artwork: {
+    frontPngBase64: string;
+    backPngBase64: string;
+    pdfBase64: string | null;
+  };
+  copy?: {
+    greeting?: string;
+    message?: string;
+    footer?: string;
+  };
+};
+
+export function useCampaignArtworkPreview() {
+  return useMutation({
+    mutationFn: async (input: {
+      mailingId: string;
+      templateId: string;
+      customerId: string;
+      occasionSlug?: string;
+      occasionName?: string;
+      messageTemplateOverride?: string | null;
+      campaignName?: string;
+      customerLabel?: string;
+      includeCompanyLogo?: boolean;
+    }) => {
+      const result = await apiClient<CampaignArtworkPreviewResult>(
+        "/api/campaigns/preview",
+        {
+          method: "POST",
+          body: {
+            templateId: input.templateId,
+            customerId: input.customerId,
+            occasionSlug: input.occasionSlug,
+            occasionName: input.occasionName,
+            messageTemplateOverride:
+              input.messageTemplateOverride ?? undefined,
+            campaignName: input.campaignName,
+            includePdf: false,
+            includeCompanyLogo: input.includeCompanyLogo === true,
+          },
+        }
+      );
+      return { ...result, mailingId: input.mailingId, customerLabel: input.customerLabel };
+    },
+  });
+}

@@ -20,8 +20,9 @@ import {
 import { useAuthStore } from "@/stores/auth-store";
 import { ThemeLoader } from "@/components/ui/ThemeLoader";
 import { useToast } from "@/components/ui/Toast";
-import { ApiClientError } from "@/lib/api/client";
-import { getTemplateMeta, TEMPLATE_META } from "@/lib/cards/template-meta";
+import { ApiClientError, apiClient } from "@/lib/api/client";
+import { formatDearCustomerName } from "@/lib/campaigns/master-design";
+import type { OrganizationBranding } from "@/lib/types/cards";
 import { BackStep } from "./BackStep";
 import { CardFlipPreview } from "./CardFlipPreview";
 import { CustomizeHeader } from "./CustomizeHeader";
@@ -67,6 +68,7 @@ export function NewCardForm() {
   const [activeSide, setActiveSide] = useState<CardSide>("front");
   const [customerId, setCustomerId] = useState("");
   const [showNewCustomer, setShowNewCustomer] = useState(false);
+  const [occasionHeading, setOccasionHeading] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [personalMessage, setPersonalMessage] = useState("");
   const [senderName, setSenderName] = useState("");
@@ -74,7 +76,8 @@ export function NewCardForm() {
   const [phone, setPhone] = useState("");
   const [emailAddress, setEmailAddress] = useState("");
   const [website, setWebsite] = useState("");
-  const [footerNote, setFooterNote] = useState("");
+  const [includeCompanyLogo, setIncludeCompanyLogo] = useState(false);
+  const [brandingLogoUrl, setBrandingLogoUrl] = useState<string | null>(null);
   const [newCustomer, setNewCustomer] =
     useState<NewCustomerFormState>(EMPTY_NEW_CUSTOMER);
 
@@ -89,8 +92,30 @@ export function NewCardForm() {
   }, [defaultSender, senderName]);
 
   useEffect(() => {
+    let cancelled = false;
+    apiClient<{ branding: OrganizationBranding }>("/api/organization/branding")
+      .then((data) => {
+        if (cancelled) return;
+        const logo = data.branding.logo_url?.trim() || null;
+        setBrandingLogoUrl(logo);
+        if (!logo) setIncludeCompanyLogo(false);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setBrandingLogoUrl(null);
+          setIncludeCompanyLogo(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeOrganizationId]);
+
+  useEffect(() => {
     setCustomerId("");
     setCustomerName("");
+    setOccasionHeading("");
+    setIncludeCompanyLogo(false);
     setShowNewCustomer(false);
     setActiveSide("front");
   }, [activeOrganizationId]);
@@ -99,19 +124,9 @@ export function NewCardForm() {
     if (!customerId || !customers) return;
     const selected = customers.find((customer) => customer.id === customerId);
     if (selected) {
-      setCustomerName(
-        `${selected.first_name} ${selected.last_name}`.trim()
-      );
+      setCustomerName(selected.first_name.trim());
     }
   }, [customerId, customers]);
-
-  useEffect(() => {
-    if (!template) return;
-    const meta = TEMPLATE_META[template.slug];
-    if (meta && !footerNote) {
-      setFooterNote(meta.footerNote);
-    }
-  }, [template, footerNote]);
 
   useLayoutEffect(() => {
     const activeStep =
@@ -159,15 +174,11 @@ export function NewCardForm() {
     );
   }
 
-  const templateMeta = getTemplateMeta(template.slug);
-
   const handleCreateCustomer = async () => {
     try {
       const result = await createCustomer.mutateAsync(newCustomer);
       setCustomerId(result.customer.id);
-      setCustomerName(
-        `${result.customer.first_name} ${result.customer.last_name}`.trim()
-      );
+      setCustomerName(result.customer.first_name.trim());
       setShowNewCustomer(false);
       showToast({
         tone: "success",
@@ -239,16 +250,29 @@ export function NewCardForm() {
       setActiveSide("back");
       return;
     }
+    if (includeCompanyLogo && !brandingLogoUrl?.trim()) {
+      showToast({
+        tone: "error",
+        title: "Organization logo missing",
+        description:
+          "Upload a logo in organization branding, or turn the logo option off.",
+      });
+      setActiveSide("back");
+      return;
+    }
     try {
       const fieldValues = {
-        customer_name: customerName,
+        occasion_heading: occasionHeading.trim() || undefined,
+        customer_name: formatDearCustomerName(customerName),
         personal_message: personalMessage,
         sender_name: senderName,
         sender_title: senderTitle,
         phone,
         email_address: emailAddress,
         website,
-        footer_note: footerNote,
+        ...(includeCompanyLogo && brandingLogoUrl?.trim()
+          ? { company_logo: brandingLogoUrl.trim() }
+          : {}),
       };
       const created = await createCard.mutateAsync({
         template_id: template.id,
@@ -272,9 +296,7 @@ export function NewCardForm() {
     }
   };
 
-  const previewMessage =
-    personalMessage ||
-    "Wishing you a wonderful day filled with joy and gratitude.";
+  const previewMessage = personalMessage;
   const isSaving = createCard.isPending || updateCard.isPending;
 
   return (
@@ -327,13 +349,12 @@ export function NewCardForm() {
                 onNewCustomerChange={setNewCustomer}
                 onCreateCustomer={() => void handleCreateCustomer()}
                 isCreatingCustomer={createCustomer.isPending}
+                occasionHeading={occasionHeading}
+                onOccasionHeadingChange={setOccasionHeading}
                 customerName={customerName}
                 onCustomerNameChange={setCustomerName}
                 personalMessage={personalMessage}
                 onPersonalMessageChange={setPersonalMessage}
-                footerNote={footerNote}
-                onFooterNoteChange={setFooterNote}
-                footerNotePlaceholder={templateMeta.footerNote}
                 onNext={handleNext}
               />
             </div>
@@ -363,6 +384,9 @@ export function NewCardForm() {
                 onEmailAddressChange={setEmailAddress}
                 website={website}
                 onWebsiteChange={setWebsite}
+                includeCompanyLogo={includeCompanyLogo}
+                onIncludeCompanyLogoChange={setIncludeCompanyLogo}
+                brandingLogoUrl={brandingLogoUrl}
                 onBack={handleBack}
                 isSaving={isSaving}
               />
@@ -372,11 +396,10 @@ export function NewCardForm() {
 
         <CardFlipPreview
           template={template}
-          templateMeta={templateMeta}
           activeSide={activeSide}
           customerName={customerName}
+          occasionHeading={occasionHeading}
           previewMessage={previewMessage}
-          footerNote={footerNote}
           senderName={senderName}
           senderTitle={senderTitle}
           phone={phone}

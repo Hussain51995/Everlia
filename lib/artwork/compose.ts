@@ -8,6 +8,11 @@ import {
   POSTCARD_PDF_WIDTH_PT,
   POSTCARD_PDF_HEIGHT_PT,
 } from "@/lib/artwork/types";
+import {
+  isEverliaBrandLogoUrl,
+  logoColorsFromFields,
+  renderEverliaLogoPng,
+} from "@/lib/artwork/everlia-logo";
 import { getAppUrl } from "@/lib/app-url";
 
 type OpenTypeParse = (buffer: ArrayBuffer) => Font;
@@ -116,6 +121,67 @@ function textToPathData(
   return parts.join(" ");
 }
 
+function breakWordToWidth(
+  font: Font,
+  word: string,
+  fontSize: number,
+  maxWidth: number,
+  letterSpacing = 0
+): string[] {
+  if (measureTextWidth(font, word, fontSize, letterSpacing) <= maxWidth) {
+    return [word];
+  }
+
+  const chunks: string[] = [];
+  let rest = word;
+  while (rest.length > 0) {
+    let lo = 1;
+    let hi = rest.length;
+    let best = 1;
+    while (lo <= hi) {
+      const mid = Math.floor((lo + hi) / 2);
+      const slice = rest.slice(0, mid);
+      if (measureTextWidth(font, slice, fontSize, letterSpacing) <= maxWidth) {
+        best = mid;
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
+      }
+    }
+    chunks.push(rest.slice(0, best));
+    rest = rest.slice(best);
+  }
+  return chunks;
+}
+
+function ellipsizeToWidth(
+  font: Font,
+  text: string,
+  fontSize: number,
+  maxWidth: number,
+  letterSpacing = 0
+): string {
+  const ellipsis = "…";
+  if (measureTextWidth(font, text, fontSize, letterSpacing) <= maxWidth) {
+    return text;
+  }
+  let lo = 0;
+  let hi = text.length;
+  let best = 0;
+  while (lo <= hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    const candidate = `${text.slice(0, mid).trimEnd()}${ellipsis}`;
+    if (measureTextWidth(font, candidate, fontSize, letterSpacing) <= maxWidth) {
+      best = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  if (best <= 0) return ellipsis;
+  return `${text.slice(0, best).trimEnd()}${ellipsis}`;
+}
+
 function wrapTextByWidth(
   font: Font,
   text: string,
@@ -125,23 +191,51 @@ function wrapTextByWidth(
   letterSpacing = 0
 ): string[] {
   const words = text.trim().split(/\s+/).filter(Boolean);
+  const tokens = words.flatMap((word) =>
+    breakWordToWidth(font, word, fontSize, maxWidth, letterSpacing)
+  );
   const lines: string[] = [];
   let current = "";
+  let tokenIndex = 0;
 
-  for (const word of words) {
-    const next = current ? `${current} ${word}` : word;
+  while (tokenIndex < tokens.length) {
+    const token = tokens[tokenIndex]!;
+    const next = current ? `${current} ${token}` : token;
     const width = measureTextWidth(font, next, fontSize, letterSpacing);
+
     if (width > maxWidth && current) {
       lines.push(current);
-      current = word;
+      current = "";
       if (lines.length >= maxLines) break;
-    } else {
-      current = next;
+      continue;
     }
+
+    current = next;
+    tokenIndex += 1;
   }
 
-  if (lines.length < maxLines && current) lines.push(current);
-  return lines.slice(0, maxLines);
+  if (lines.length < maxLines && current) {
+    lines.push(current);
+    current = "";
+    tokenIndex = tokens.length;
+  }
+
+  const truncated =
+    tokenIndex < tokens.length || Boolean(current) || lines.length > maxLines;
+  const clipped = lines.slice(0, maxLines);
+
+  if (truncated && clipped.length > 0) {
+    const last = clipped.length - 1;
+    clipped[last] = ellipsizeToWidth(
+      font,
+      clipped[last]!,
+      fontSize,
+      maxWidth,
+      letterSpacing
+    );
+  }
+
+  return clipped;
 }
 
 async function fetchBuffer(url: string): Promise<Buffer> {
@@ -203,6 +297,8 @@ async function textSvgOverlay(
     letterSpacing
   );
 
+  const needsShadow = isLightFillColor(color);
+
   const paths = lines
     .map((line, index) => {
       const lineWidth = measureTextWidth(font, line, fontSize, letterSpacing);
@@ -212,7 +308,10 @@ async function textSvgOverlay(
 
       const y = field.y + fontSize + index * lineHeight;
       const d = textToPathData(font, line, x, y, fontSize, letterSpacing);
-      return `<path d="${d}" fill="${color}"/>`;
+      const shadow = needsShadow
+        ? `<path d="${d}" fill="rgba(10,8,12,0.55)" transform="translate(0 2)"/>`
+        : "";
+      return `${shadow}<path d="${d}" fill="${color}"/>`;
     })
     .join("\n  ");
 
@@ -221,6 +320,16 @@ async function textSvgOverlay(
 </svg>`;
 
   return Buffer.from(svg);
+}
+
+function isLightFillColor(color: string): boolean {
+  const hex = color.trim().replace(/^#/, "");
+  if (!/^[0-9a-fA-F]{6}$/.test(hex)) return false;
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.72;
 }
 
 async function circularClip(imgBuf: Buffer, size: number): Promise<Buffer> {
@@ -269,10 +378,44 @@ async function composeSide(options: {
 
     if (field.type === "image") {
       const imageUrl = values[field.key];
-      if (!imageUrl) continue;
-      const imgBuf = await fetchBuffer(imageUrl);
       const w = field.width ?? 200;
       const h = field.height ?? 200;
+
+      if (field.key === "company_logo") {
+        const logoUrl = imageUrl?.trim() ?? "";
+        const useBrand = !logoUrl || isEverliaBrandLogoUrl(logoUrl);
+        let finalBuf: Buffer;
+        if (useBrand) {
+          const accent =
+            field.color ??
+            fields.find((f) => f.key === "website")?.color;
+          const sender = fields.find((f) => f.key === "sender_name")?.color;
+          const muted = fields.find((f) => f.key === "sender_title")?.color;
+          finalBuf = await renderEverliaLogoPng(
+            w,
+            h,
+            logoColorsFromFields({ accent, sender, muted })
+          );
+        } else {
+          const imgBuf = await fetchBuffer(logoUrl);
+          finalBuf = await sharp(imgBuf)
+            .resize(w, h, {
+              fit: "contain",
+              background: { r: 0, g: 0, b: 0, alpha: 0 },
+            })
+            .png()
+            .toBuffer();
+        }
+        composites.push({
+          input: finalBuf,
+          top: Math.round(field.y),
+          left: Math.round(field.x),
+        });
+        continue;
+      }
+
+      if (!imageUrl) continue;
+      const imgBuf = await fetchBuffer(imageUrl);
 
       let finalBuf: Buffer;
       if (field.shape === "circle") {

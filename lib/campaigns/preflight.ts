@@ -45,6 +45,7 @@ export type PreflightContext = {
     default_template_id: string;
     name: string;
     organization_id: string;
+    configuration: Record<string, unknown> | null;
   };
   organization: {
     id: string;
@@ -145,7 +146,7 @@ export async function preflightCampaignMailing(
   const { data: campaign } = await admin
     .from("campaigns")
     .select(
-      "id, status, mailing_mode, start_date, end_date, timezone, created_by, default_template_id, name, organization_id"
+      "id, status, mailing_mode, start_date, end_date, timezone, created_by, default_template_id, name, organization_id, configuration"
     )
     .eq("id", mailing.campaign_id)
     .maybeSingle();

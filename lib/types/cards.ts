@@ -11,6 +11,7 @@ export type GreetingCardStatus =
 export type CardResponseType = "thank" | "message" | "contact_request";
 
 export type CardTemplateCategory =
+  | "general"
   | "birthday"
   | "anniversary"
   | "home_anniversary"
@@ -232,6 +233,7 @@ export const CARD_STATUS_LABELS: Record<GreetingCardStatus, string> = {
 };
 
 export const TEMPLATE_CATEGORY_LABELS: Record<CardTemplateCategory, string> = {
+  general: "Master Designs",
   birthday: "Birthday",
   anniversary: "Anniversary",
   home_anniversary: "Home Anniversary",

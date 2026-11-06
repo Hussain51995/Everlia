@@ -62,8 +62,8 @@ describe("Phase 3 artwork preview (compose reuse)", () => {
     for (const c of cases) {
       const preview = await generateCampaignArtworkPreview({
         designConfig,
-        frontBackgroundUrl: "/templates/birthday-classic/front.png",
-        backBackgroundUrl: "/templates/birthday-classic/back.png",
+        frontBackgroundUrl: "/templates/design-1/front.png",
+        backBackgroundUrl: "/templates/design-1/back.png",
         customer: { first_name: "Alex", last_name: "Rivera" },
         sender: { first_name: "Pat", last_name: "Lee" },
         occasionSlug: c.occasionSlug,
@@ -84,8 +84,8 @@ describe("Phase 3 artwork preview (compose reuse)", () => {
     const designConfig = defaultDesignConfig(frontFields, backFields);
     const preview = await generateCampaignArtworkPreview({
       designConfig,
-      frontBackgroundUrl: "/templates/thank-you-warm/front.png",
-      backBackgroundUrl: "/templates/thank-you-warm/back.png",
+      frontBackgroundUrl: "/templates/design-1/front.png",
+      backBackgroundUrl: "/templates/design-1/back.png",
       customer: { first_name: "", last_name: "" },
       occasionSlug: "birthday",
     });
@@ -97,8 +97,8 @@ describe("Phase 3 artwork preview (compose reuse)", () => {
     const designConfig = defaultDesignConfig(frontFields, backFields);
     const preview = await generateCampaignArtworkPreview({
       designConfig,
-      frontBackgroundUrl: "/templates/birthday-classic/front.png",
-      backBackgroundUrl: "/templates/birthday-classic/back.png",
+      frontBackgroundUrl: "/templates/design-1/front.png",
+      backBackgroundUrl: "/templates/design-1/back.png",
       customer: { first_name: "Unused", last_name: "Name" },
       fieldValues: {
         customer_name: "Manual Card Name",
