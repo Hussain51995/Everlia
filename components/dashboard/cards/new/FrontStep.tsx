@@ -15,13 +15,12 @@ type FrontStepProps = {
   onNewCustomerChange: (value: NewCustomerFormState) => void;
   onCreateCustomer: () => void;
   isCreatingCustomer: boolean;
+  occasionHeading: string;
+  onOccasionHeadingChange: (value: string) => void;
   customerName: string;
   onCustomerNameChange: (value: string) => void;
   personalMessage: string;
   onPersonalMessageChange: (value: string) => void;
-  footerNote: string;
-  onFooterNoteChange: (value: string) => void;
-  footerNotePlaceholder: string;
   onNext: () => void;
 };
 
@@ -36,13 +35,12 @@ export function FrontStep({
   onNewCustomerChange,
   onCreateCustomer,
   isCreatingCustomer,
+  occasionHeading,
+  onOccasionHeadingChange,
   customerName,
   onCustomerNameChange,
   personalMessage,
   onPersonalMessageChange,
-  footerNote,
-  onFooterNoteChange,
-  footerNotePlaceholder,
   onNext,
 }: FrontStepProps) {
   return (
@@ -106,15 +104,30 @@ export function FrontStep({
         </p>
         <label className="block space-y-1">
           <span className="text-xs font-bold text-[#0B1F3D]">
-            Customer name on card
+            Occasion heading{" "}
+            <span className="font-normal text-[#557393]">(optional)</span>
+          </span>
+          <input
+            value={occasionHeading}
+            onChange={(e) => onOccasionHeadingChange(e.target.value)}
+            className="w-full rounded-2xl border border-[#C4EBF2] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[#38B2D1]"
+            placeholder="Happy Birthday!"
+          />
+        </label>
+        <label className="block space-y-1">
+          <span className="text-xs font-bold text-[#0B1F3D]">
+            Customer first name on card
           </span>
           <input
             value={customerName}
             onChange={(e) => onCustomerNameChange(e.target.value)}
             className="w-full rounded-2xl border border-[#C4EBF2] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[#38B2D1]"
-            placeholder="John Smith"
+            placeholder="Sharjeel"
             required
           />
+          <span className="text-[10px] text-[#557393]">
+            Prints as “Dear {customerName.trim() || "Sharjeel"}”.
+          </span>
         </label>
         <label className="block space-y-1">
           <span className="text-xs font-bold text-[#0B1F3D]">
@@ -127,18 +140,6 @@ export function FrontStep({
             className="w-full resize-none rounded-2xl border border-[#C4EBF2] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[#38B2D1]"
             placeholder="Happy birthday! Thinking of you…"
             required
-          />
-        </label>
-        <label className="block space-y-1">
-          <span className="text-xs font-bold text-[#0B1F3D]">
-            Footer note{" "}
-            <span className="font-normal text-[#557393]">(optional)</span>
-          </span>
-          <input
-            value={footerNote}
-            onChange={(e) => onFooterNoteChange(e.target.value)}
-            className="w-full rounded-2xl border border-[#C4EBF2] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[#38B2D1]"
-            placeholder={footerNotePlaceholder}
           />
         </label>
       </div>

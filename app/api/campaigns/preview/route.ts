@@ -107,6 +107,13 @@ export async function POST(request: Request) {
     }
 
     const profile = ctx.session.profile;
+
+    const { data: branding } = await supabase
+      .from("organization_branding")
+      .select("logo_url")
+      .eq("organization_id", ctx.organizationId)
+      .maybeSingle();
+
     const preview = await generateCampaignArtworkPreview({
       designConfig: template.design_config as DesignConfig,
       frontBackgroundUrl: template.front_background_url,
@@ -125,6 +132,10 @@ export async function POST(request: Request) {
       milestone: input.milestone,
       campaignName: input.campaignName,
       includePdf: input.includePdf,
+      baseFieldValues:
+        input.includeCompanyLogo && branding?.logo_url?.trim()
+          ? { company_logo: branding.logo_url.trim() }
+          : undefined,
     });
 
     return apiSuccess({

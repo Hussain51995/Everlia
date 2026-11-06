@@ -42,6 +42,7 @@ export const campaignPreviewSchema = z
       .optional(),
     campaignName: z.string().trim().max(160).optional(),
     includePdf: z.boolean().optional().default(false),
+    includeCompanyLogo: z.boolean().optional().default(false),
   })
   .superRefine((value, ctx) => {
     if (!value.customerId && !value.customer) {

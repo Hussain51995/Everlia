@@ -32,7 +32,20 @@ export async function GET(request: Request, { params }: Params) {
       .select(
         `
         *,
-        customer:customers ( id, first_name, last_name )
+        customer:customers!customer_id (
+          id, first_name, last_name
+        ),
+        greeting_card:greeting_cards!greeting_card_id (
+          id,
+          status,
+          front_artwork_url,
+          back_artwork_url
+        ),
+        campaign_occasion:campaign_occasions!campaign_occasion_id (
+          id,
+          message_template,
+          occasion:occasions ( slug, name )
+        )
       `
       )
       .eq("campaign_id", params.id)

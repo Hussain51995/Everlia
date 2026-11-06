@@ -63,8 +63,8 @@ export async function generateCardArtwork(params: {
   } | null;
 
   if (!fieldValues.customer_name && customer) {
-    fieldValues.customer_name =
-      `${customer.first_name} ${customer.last_name}`.trim();
+    const first = customer.first_name?.trim();
+    fieldValues.customer_name = first ? `Dear ${first}` : "Dear Friend";
   }
   if (!fieldValues.sender_name) {
     fieldValues.sender_name = params.defaultSenderName?.trim() || "Your friend";
