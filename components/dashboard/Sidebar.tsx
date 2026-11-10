@@ -33,9 +33,9 @@ function SettingsHelperIcon(props: React.SVGProps<SVGSVGElement>) {
 
 const NAV_ITEMS = [
   { name: "Overview", href: "/dashboard", icon: LayoutDashboardIcon, badge: null },
+  { name: "Campaigns", href: "/dashboard/campaigns", icon: CalendarIcon, badge: null },
   { name: "Templates", href: "/dashboard/templates", icon: GiftIcon, badge: null },
   { name: "My Cards", href: "/dashboard/cards", icon: SendIcon, badge: null },
-  { name: "Campaigns", href: "/dashboard/campaigns", icon: CalendarIcon, badge: null },
   { name: "Customers", href: "/dashboard/customers", icon: UsersIcon, badge: null },
   { name: "Responses", href: "/dashboard/responses", icon: ChartIcon, badge: null },
 ];
@@ -43,10 +43,10 @@ const NAV_ITEMS = [
 interface SidebarProps {
   mobileOpen: boolean;
   onCloseMobile: () => void;
-  onSendCard: () => void;
+  onStartCampaign: () => void;
 }
 
-export function Sidebar({ mobileOpen, onCloseMobile, onSendCard }: SidebarProps) {
+export function Sidebar({ mobileOpen, onCloseMobile, onStartCampaign }: SidebarProps) {
   const pathname = usePathname();
   const signOut = useSignOut();
   const setActiveOrganization = useSetActiveOrganization();
@@ -174,17 +174,26 @@ export function Sidebar({ mobileOpen, onCloseMobile, onSendCard }: SidebarProps)
             </button>
           </div>
 
-          <div className="mt-6">
+          <div className="mt-6 space-y-2">
             <button
+              type="button"
               onClick={() => {
                 onCloseMobile();
-                onSendCard();
+                onStartCampaign();
               }}
-              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-[#38B2D1] py-3 text-xs font-bold text-white shadow-lg shadow-[#38B2D1]/25 transition-all hover:bg-[#43c5e6] active:scale-[0.98]"
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#38B2D1] py-3 text-xs font-bold text-white shadow-lg shadow-[#38B2D1]/25 transition-all hover:bg-[#43c5e6] active:scale-[0.98]"
             >
               <SparklesIcon className="h-4 w-4" />
-              <span>Send a Card</span>
+              <span>Start Campaign</span>
             </button>
+            <Link
+              href="/dashboard/templates"
+              onClick={onCloseMobile}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/15 bg-white/5 py-2.5 text-[11px] font-bold text-[#C4EBF2] transition-all hover:bg-white/10 hover:text-white"
+            >
+              <SendIcon className="h-3.5 w-3.5" />
+              <span>Send one-off card</span>
+            </Link>
           </div>
 
           {sessionReady &&

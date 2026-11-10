@@ -5,7 +5,6 @@ import {
   MenuIcon,
   SearchIcon,
   BellIcon,
-  PlusIcon,
   SparklesIcon,
   CheckCircleIcon,
   MailIcon,
@@ -17,10 +16,9 @@ import { useAuthStore } from "@/stores/auth-store";
 
 interface DashboardHeaderProps {
   onOpenMobileSidebar: () => void;
-  onSendCard: () => void;
 }
 
-export function DashboardHeader({ onOpenMobileSidebar, onSendCard }: DashboardHeaderProps) {
+export function DashboardHeader({ onOpenMobileSidebar }: DashboardHeaderProps) {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const signOut = useSignOut();
@@ -117,14 +115,6 @@ export function DashboardHeader({ onOpenMobileSidebar, onSendCard }: DashboardHe
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
-        <button
-          onClick={onSendCard}
-          className="hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-[#38B2D1] px-3.5 py-2 text-xs font-bold text-white shadow-md shadow-[#38B2D1]/20 transition-all hover:bg-[#2ca0be]"
-        >
-          <PlusIcon className="h-4 w-4" />
-          <span>Send a Card</span>
-        </button>
-
         <div className="relative">
           <button
             onClick={() => setNotificationsOpen(!notificationsOpen)}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useOccasions } from "@/hooks/campaigns";
 import { useCustomers } from "@/hooks/cards";
 import {
@@ -12,53 +13,25 @@ import {
   textInputClass,
 } from "@/components/dashboard/campaigns/shared";
 import { ThemeLoader } from "@/components/ui/ThemeLoader";
-import { PlusIcon } from "@/components/ui/Icons";
+import {
+  CalendarIcon,
+  CheckIcon,
+  PlusIcon,
+} from "@/components/ui/Icons";
 import { OccasionEditDialog } from "@/components/dashboard/campaigns/wizard/OccasionEditDialog";
+import { OccasionPreviewCard } from "@/components/dashboard/campaigns/wizard/OccasionPreviewCard";
+import { OccasionsCalendarView } from "@/components/dashboard/campaigns/wizard/OccasionsCalendarView";
+import {
+  CATEGORY_FILTERS,
+  ListViewIcon,
+  categoryLabel,
+  categoryStyle,
+  occasionIcon,
+  type TileModel,
+} from "@/components/dashboard/campaigns/wizard/occasions-step-shared";
 import type { OccasionDefinition } from "@/lib/campaigns/occasions";
 
-const CATEGORY_FILTERS: Array<{ label: string; value: string }> = [
-  { label: "All", value: "" },
-  { label: "Holidays", value: "federal_holiday" },
-  { label: "Greetings", value: "popular_greeting" },
-  { label: "Real estate", value: "real_estate_milestone" },
-  { label: "Personal", value: "personal_milestone" },
-  { label: "Custom", value: "custom" },
-];
-
-const CATEGORY_ACCENT: Record<string, string> = {
-  federal_holiday: "from-[#0B1F3D] to-[#1A3A5C]",
-  popular_greeting: "from-[#0E7490] to-[#38B2D1]",
-  real_estate_milestone: "from-[#0F766E] to-[#14B8A6]",
-  personal_milestone: "from-[#9A3412] to-[#EA580C]",
-  custom: "from-[#4C1D95] to-[#7C3AED]",
-};
-
-function categoryLabel(category?: string) {
-  return (category ?? "custom").replace(/_/g, " ");
-}
-
-function shortKind(kind?: string) {
-  if (!kind) return "Occasion";
-  if (kind === "fixed_calendar") return "Fixed date";
-  if (kind === "relative_calendar") return "Floating date";
-  if (kind === "customer_milestone") return "Per customer";
-  return "Custom";
-}
-
-type TileModel = {
-  key: string;
-  name: string;
-  category?: string;
-  kindHint: string;
-  leadDays: number;
-  isSelected: boolean;
-  isEnabled: boolean;
-  hasMessage: boolean;
-  exclusionCount: number;
-  occurrenceDate?: string;
-  draft: WizardOccasionDraft | null;
-  catalog: OccasionDefinition | null;
-};
+type ViewMode = "list" | "calendar";
 
 export function StepOccasions() {
   const { data: catalog, isLoading } = useOccasions();
@@ -69,12 +42,15 @@ export function StepOccasions() {
   const removeOccasion = useCampaignWizardStore((s) => s.removeOccasion);
   const addOccasion = useCampaignWizardStore((s) => s.addOccasion);
   const customerIds = useCampaignWizardStore((s) => s.customerIds);
+  const startDate = useCampaignWizardStore((s) => s.startDate);
+  const endDate = useCampaignWizardStore((s) => s.endDate);
 
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [customName, setCustomName] = useState("");
   const [customDate, setCustomDate] = useState("");
   const [editingKey, setEditingKey] = useState<string | null>(null);
-  const [hoveredKey, setHoveredKey] = useState<string | null>(null);
+  const [previewKey, setPreviewKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (!catalog?.length || occasions.length > 0) return;
@@ -116,7 +92,6 @@ export function StepOccasions() {
         key: o.slug,
         name: o.name,
         category: o.category,
-        kindHint: shortKind(o.kind),
         leadDays: draft?.leadDays ?? o.defaultLeadDays ?? 7,
         isSelected: Boolean(draft),
         isEnabled: draft?.isEnabled ?? false,
@@ -133,7 +108,6 @@ export function StepOccasions() {
         key: o.key,
         name: o.name,
         category: o.category ?? "custom",
-        kindHint: o.occurrenceDate ?? "Custom date",
         leadDays: o.leadDays,
         isSelected: true,
         isEnabled: o.isEnabled,
@@ -152,6 +126,19 @@ export function StepOccasions() {
     return tiles.filter((t) => (t.category ?? "custom") === categoryFilter);
   }, [tiles, categoryFilter]);
 
+  useEffect(() => {
+    if (!visibleTiles.length) {
+      setPreviewKey(null);
+      return;
+    }
+    if (previewKey && visibleTiles.some((t) => t.key === previewKey)) return;
+    const preferred =
+      visibleTiles.find((t) => t.isSelected && t.isEnabled) ??
+      visibleTiles.find((t) => t.isSelected) ??
+      visibleTiles[0];
+    setPreviewKey(preferred?.key ?? null);
+  }, [visibleTiles, previewKey]);
+
   const selectedCount = occasions.filter((o) => o.isEnabled).length;
   const visibleCatalog = useMemo(
     () =>
@@ -167,6 +154,8 @@ export function StepOccasions() {
     );
   const editingOccasion =
     occasions.find((o) => o.key === editingKey) ?? null;
+  const previewTile =
+    visibleTiles.find((t) => t.key === previewKey) ?? null;
 
   const selectAllVisible = () => {
     const visibleSlugs = new Set(visibleCatalog.map((o) => o.slug));
@@ -201,12 +190,9 @@ export function StepOccasions() {
     );
   };
 
-  const ensureAndEdit = (tile: TileModel) => {
-    if (tile.draft) {
-      setEditingKey(tile.draft.key);
-      return;
-    }
-    if (!tile.catalog) return;
+  const ensureSelected = (tile: TileModel): WizardOccasionDraft | null => {
+    if (tile.draft) return tile.draft;
+    if (!tile.catalog) return null;
     const o = tile.catalog;
     const draft: WizardOccasionDraft = {
       key: o.slug,
@@ -219,6 +205,25 @@ export function StepOccasions() {
       excludedCustomerIds: [],
     };
     addOccasion(draft);
+    return draft;
+  };
+
+  const toggleSelection = (tile: TileModel) => {
+    if (tile.draft) {
+      if (!tile.draft.isEnabled) {
+        updateOccasion(tile.draft.key, { isEnabled: true });
+        return;
+      }
+      removeOccasion(tile.draft.key);
+      return;
+    }
+    ensureSelected(tile);
+  };
+
+  const openEditor = (tile: TileModel) => {
+    const draft = ensureSelected(tile);
+    if (!draft) return;
+    setPreviewKey(tile.key);
     setEditingKey(draft.key);
   };
 
@@ -232,22 +237,63 @@ export function StepOccasions() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-sm text-[#557393]">
-            Pick occasions as tiles. Hover for a quick peek — click to edit lead
-            time, message, and exclusions.
-          </p>
-          <p className="mt-1 text-xs font-bold text-[#0B1F3D]">
-            {selectedCount} enabled · {occasions.length} selected
-          </p>
+      <div>
+        <p className="text-sm text-[#557393]">
+          {viewMode === "list"
+            ? "Pick occasions to include — select a row for a quick peek, then edit lead time, message, and exclusions."
+            : "Scan the campaign year as a calendar — pin holidays and greetings, then fine-tune each occasion."}
+        </p>
+        <p className="mt-1 text-xs font-bold text-[#0B1F3D]">
+          {selectedCount} occasion{selectedCount === 1 ? "" : "s"} selected
+        </p>
+      </div>
+
+      <div className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-0.5">
+        <div
+          role="tablist"
+          aria-label="Occasion view"
+          className="relative inline-flex shrink-0 rounded-full border border-[#C4EBF2] bg-[#F8FBFC] p-1"
+        >
+          {(
+            [
+              { id: "list", label: "List", Icon: ListViewIcon },
+              { id: "calendar", label: "Calendar", Icon: CalendarIcon },
+            ] as const
+          ).map(({ id, label, Icon }) => {
+            const active = viewMode === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setViewMode(id)}
+                className={`relative z-10 inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold transition ${
+                  active ? "text-[#0B1F3D]" : "text-[#557393] hover:text-[#0B1F3D]"
+                }`}
+              >
+                {active ? (
+                  <motion.span
+                    layoutId="occasions-view-pill"
+                    className="absolute inset-0 rounded-full border border-[#38B2D1] bg-white shadow-sm"
+                    transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                  />
+                ) : null}
+                <span className="relative inline-flex items-center gap-1.5">
+                  <Icon className="h-3.5 w-3.5" />
+                  {label}
+                </span>
+              </button>
+            );
+          })}
         </div>
-        <div className="flex flex-wrap gap-2">
+
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           <button
             type="button"
             onClick={selectAllVisible}
             disabled={!visibleCatalog.length || allVisibleSelected}
-            className="rounded-full border border-[#38B2D1] bg-[#F0FAFC] px-3 py-1.5 text-xs font-bold text-[#0B1F3D] transition hover:bg-[#E6F7FB] disabled:cursor-not-allowed disabled:opacity-50"
+            className="whitespace-nowrap rounded-full border border-[#38B2D1] bg-[#F0FAFC] px-3 py-1.5 text-xs font-bold text-[#0B1F3D] transition hover:bg-[#E6F7FB] disabled:cursor-not-allowed disabled:opacity-50"
           >
             Select all
             {categoryFilter ? ` (${visibleCatalog.length})` : ""}
@@ -258,7 +304,7 @@ export function StepOccasions() {
             disabled={!visibleCatalog.some((o) =>
               occasions.some((d) => d.occasionSlug === o.slug)
             )}
-            className="rounded-full border border-[#C4EBF2] bg-white px-3 py-1.5 text-xs font-bold text-[#557393] transition hover:bg-[#F8FBFC] disabled:cursor-not-allowed disabled:opacity-50"
+            className="whitespace-nowrap rounded-full border border-[#C4EBF2] bg-white px-3 py-1.5 text-xs font-bold text-[#557393] transition hover:bg-[#F8FBFC] disabled:cursor-not-allowed disabled:opacity-50"
           >
             Clear
           </button>
@@ -282,109 +328,119 @@ export function StepOccasions() {
         ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-        {visibleTiles.map((tile) => {
-          const accent =
-            CATEGORY_ACCENT[tile.category ?? "custom"] ??
-            CATEGORY_ACCENT.custom;
-          const showTip = hoveredKey === tile.key;
+      <AnimatePresence mode="wait" initial={false}>
+        {viewMode === "list" ? (
+          <motion.div
+            key="list"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.22 }}
+            className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-5"
+          >
+            <div className="overflow-hidden rounded-2xl border border-[#C4EBF2] bg-[#F8FBFC]">
+              <div className="max-h-[420px] space-y-2 overflow-y-auto p-2.5 sm:p-3">
+                {visibleTiles.map((tile) => {
+                  const style = categoryStyle(tile.category);
+                  const Icon = occasionIcon(tile);
+                  const isPreview = previewKey === tile.key;
+                  const checked = tile.isSelected && tile.isEnabled;
 
-          return (
-            <div
-              key={tile.key}
-              className="relative"
-              onMouseEnter={() => setHoveredKey(tile.key)}
-              onMouseLeave={() =>
-                setHoveredKey((k) => (k === tile.key ? null : k))
-              }
-            >
-              <button
-                type="button"
-                onClick={() => ensureAndEdit(tile)}
-                className={`group relative flex aspect-square w-full flex-col overflow-hidden rounded-2xl border text-left transition ${
-                  tile.isSelected && tile.isEnabled
-                    ? "border-[#38B2D1] bg-white shadow-sm ring-2 ring-[#38B2D1]/30"
-                    : tile.isSelected
-                      ? "border-dashed border-[#C4EBF2] bg-[#F8FBFC] opacity-80"
-                      : "border-[#C4EBF2] bg-white hover:border-[#38B2D1]/60 hover:shadow-sm"
-                }`}
-              >
-                <div
-                  className={`h-1.5 w-full bg-gradient-to-r ${accent}`}
-                  aria-hidden
-                />
-                <div className="flex flex-1 flex-col justify-between p-2.5 sm:p-3">
-                  <div>
-                    <p className="line-clamp-2 text-[12px] font-black leading-snug text-[#0B1F3D] sm:text-[13px]">
-                      {tile.name}
-                    </p>
-                    <p className="mt-1 line-clamp-1 text-[10px] capitalize text-[#557393]">
-                      {categoryLabel(tile.category)}
-                    </p>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between gap-1">
-                    <span className="rounded-md bg-[#F0FAFC] px-1.5 py-0.5 text-[10px] font-bold text-[#0B1F3D]">
-                      {tile.leadDays}d lead
-                    </span>
-                    {tile.isSelected ? (
+                  return (
+                    <div
+                      key={tile.key}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setPreviewKey(tile.key)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setPreviewKey(tile.key);
+                        }
+                      }}
+                      className={`flex cursor-pointer items-center gap-3 rounded-2xl border bg-white px-3 py-3 text-left transition ${
+                        isPreview
+                          ? "border-[#38B2D1] bg-[#F0FAFC] shadow-sm ring-1 ring-[#38B2D1]/25"
+                          : "border-[#E8F4F7] hover:border-[#38B2D1]/50 hover:bg-white"
+                      }`}
+                    >
                       <span
-                        className={`h-2 w-2 rounded-full ${
-                          tile.isEnabled ? "bg-emerald-500" : "bg-slate-300"
-                        }`}
-                        title={tile.isEnabled ? "Enabled" : "Disabled"}
-                      />
-                    ) : (
-                      <span className="text-[10px] font-bold text-[#38B2D1]">
-                        Add
+                        className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${style.iconWrap} ${style.icon}`}
+                      >
+                        <Icon className="h-5 w-5" />
                       </span>
-                    )}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-bold text-[#0B1F3D]">
+                          {tile.name}
+                        </p>
+                        <p className="truncate text-xs text-[#557393]">
+                          {categoryLabel(tile.category)}
+                          {tile.occurrenceDate ? ` · ${tile.occurrenceDate}` : ""}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        aria-label={
+                          checked
+                            ? `Deselect ${tile.name}`
+                            : `Select ${tile.name}`
+                        }
+                        aria-pressed={checked}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPreviewKey(tile.key);
+                          toggleSelection(tile);
+                        }}
+                        className={`grid h-6 w-6 shrink-0 place-items-center rounded-md border transition ${
+                          checked
+                            ? "border-[#38B2D1] bg-[#38B2D1] text-white"
+                            : "border-[#C4EBF2] bg-white text-transparent hover:border-[#38B2D1]"
+                        }`}
+                      >
+                        <CheckIcon className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  );
+                })}
+
+                {!visibleTiles.length ? (
+                  <div className="rounded-2xl border border-dashed border-[#C4EBF2] bg-white px-4 py-10 text-center text-sm text-[#557393]">
+                    No occasions in this filter.
                   </div>
-                </div>
-              </button>
-
-              {showTip ? (
-                <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 w-56 -translate-x-1/2 rounded-2xl border border-[#C4EBF2] bg-[#0B1F3D] p-3 text-white shadow-xl">
-                  <p className="text-xs font-black">{tile.name}</p>
-                  <p className="mt-1 text-[10px] capitalize text-white/70">
-                    {categoryLabel(tile.category)} · {tile.kindHint}
-                  </p>
-                  <ul className="mt-2 space-y-1 text-[10px] text-white/85">
-                    <li>
-                      {tile.isSelected
-                        ? tile.isEnabled
-                          ? "Included in campaign"
-                          : "Selected but disabled"
-                        : "Not selected yet"}
-                    </li>
-                    <li>Lead days: {tile.leadDays}</li>
-                    {tile.occurrenceDate ? (
-                      <li>Date: {tile.occurrenceDate}</li>
-                    ) : null}
-                    {tile.hasMessage ? <li>Custom message set</li> : null}
-                    {tile.exclusionCount > 0 ? (
-                      <li>{tile.exclusionCount} customer exclusion(s)</li>
-                    ) : null}
-                  </ul>
-                  <p className="mt-2 text-[10px] font-bold text-[#38B2D1]">
-                    Click to {tile.isSelected ? "edit" : "add & edit"}
-                  </p>
-                </div>
-              ) : null}
+                ) : null}
+              </div>
             </div>
-          );
-        })}
-      </div>
 
-      {!visibleTiles.length ? (
-        <div className="rounded-2xl border border-dashed border-[#C4EBF2] px-4 py-8 text-center text-sm text-[#557393]">
-          No occasions in this filter.
-        </div>
-      ) : null}
+            <div className="space-y-3">
+              <p className="text-sm font-bold text-[#0B1F3D]">Occasion Preview</p>
+              <OccasionPreviewCard tile={previewTile} onEdit={openEditor} />
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="calendar"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.22 }}
+          >
+            <OccasionsCalendarView
+              tiles={visibleTiles}
+              previewKey={previewKey}
+              campaignStart={startDate}
+              campaignEnd={endDate}
+              onPreview={setPreviewKey}
+              onToggle={toggleSelection}
+              onEdit={openEditor}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="rounded-2xl border border-dashed border-[#C4EBF2] bg-[#F8FBFC] p-4">
-        <div className="flex items-center gap-2">
-          <PlusIcon className="h-4 w-4 text-[#38B2D1]" />
-          <p className="text-sm font-bold text-[#0B1F3D]">Add a custom date</p>
+        <div className="flex items-center gap-2 text-[#38B2D1]">
+          <PlusIcon className="h-4 w-4" />
+          <p className="text-sm font-bold">Add a custom date</p>
         </div>
         <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_auto]">
           <div>
@@ -431,10 +487,11 @@ export function StepOccasions() {
                 addOccasion(draft);
                 setCustomName("");
                 setCustomDate("");
+                setPreviewKey(key);
                 setEditingKey(key);
               }}
             >
-              Add & edit
+              Add date
             </button>
           </div>
         </div>
