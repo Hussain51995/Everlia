@@ -18,17 +18,26 @@ type Props = {
   tile: TileModel | null;
   onEdit: (tile: TileModel) => void;
   emptyLabel?: string;
+  className?: string;
 };
 
 export function OccasionPreviewCard({
   tile,
   onEdit,
   emptyLabel = "Select an occasion to preview its settings.",
+  className = "",
 }: Props) {
   if (!tile) {
     return (
-      <div className="rounded-2xl border border-dashed border-[#C4EBF2] bg-[#F8FBFC] px-4 py-12 text-center text-sm text-[#557393]">
-        {emptyLabel}
+      <div
+        className={`overflow-hidden rounded-2xl border border-dashed border-[#C4EBF2] bg-[#F8FBFC] ${className}`}
+      >
+        <div className="border-b border-[#E8F4F7] bg-white px-4 py-3">
+          <p className="text-sm font-bold text-[#0B1F3D]">Occasion Preview</p>
+        </div>
+        <div className="px-4 py-12 text-center text-sm text-[#557393]">
+          {emptyLabel}
+        </div>
       </div>
     );
   }
@@ -38,8 +47,12 @@ export function OccasionPreviewCard({
 
   return (
     <div
-      className={`overflow-hidden rounded-2xl border border-[#C4EBF2] border-t-4 bg-white shadow-sm ${style.accent}`}
+      className={`overflow-hidden rounded-2xl border border-[#C4EBF2] border-t-4 bg-white shadow-sm ${style.accent} ${className}`}
     >
+      <div className="border-b border-[#E8F4F7] px-4 py-3">
+        <p className="text-sm font-bold text-[#0B1F3D]">Occasion Preview</p>
+      </div>
+
       <div className="flex items-start gap-3 border-b border-[#E8F4F7] px-4 py-4">
         <span
           className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${style.iconWrap} ${style.icon}`}

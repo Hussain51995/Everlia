@@ -269,9 +269,9 @@ export function OccasionsCalendarView({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.85fr)]">
-        <div className="overflow-hidden rounded-3xl border border-[#C4EBF2] bg-white shadow-sm">
-          <div className="relative overflow-hidden bg-gradient-to-br from-[#0B1F3D] via-[#123456] to-[#0E7490] px-4 py-4 text-white sm:px-5">
+      <div className="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.85fr)]">
+        <div className="flex min-h-[720px] flex-col overflow-hidden rounded-3xl border border-[#C4EBF2] bg-white shadow-sm xl:h-full xl:min-h-[760px]">
+          <div className="relative shrink-0 overflow-hidden bg-gradient-to-br from-[#0B1F3D] via-[#123456] to-[#0E7490] px-4 py-4 text-white sm:px-5">
             <div
               className="pointer-events-none absolute -right-10 -top-16 h-40 w-40 rounded-full bg-white/10 blur-2xl"
               aria-hidden
@@ -333,7 +333,7 @@ export function OccasionsCalendarView({
             </div>
           </div>
 
-          <div className="border-b border-[#E8F4F7] bg-[#F8FBFC] px-3 py-2 sm:px-4">
+          <div className="shrink-0 border-b border-[#E8F4F7] bg-[#F8FBFC] px-3 py-2 sm:px-4">
             <div className="grid grid-cols-7 gap-1">
               {WEEKDAYS.map((d) => (
                 <div
@@ -346,6 +346,7 @@ export function OccasionsCalendarView({
             </div>
           </div>
 
+          <div className="relative min-h-0 flex-1">
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={`${cursor.year}-${cursor.month}`}
@@ -353,7 +354,7 @@ export function OccasionsCalendarView({
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: direction >= 0 ? -24 : 24 }}
               transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-              className="grid grid-cols-7 gap-px bg-[#E8F4F7] p-px"
+              className="absolute inset-0 grid grid-cols-7 grid-rows-6 gap-px bg-[#E8F4F7] p-px"
             >
               {cells.map((cell) => {
                 const isSelected = selectedDate === cell.date;
@@ -373,7 +374,7 @@ export function OccasionsCalendarView({
                         activeEvents[0]?.tile ?? cell.events[0]?.tile;
                       if (first) onPreview(first.key);
                     }}
-                    className={`group relative flex min-h-[84px] flex-col items-stretch gap-1 p-1.5 text-left transition sm:min-h-[96px] sm:p-2 ${
+                    className={`group relative flex h-full min-h-0 flex-col items-stretch gap-1 overflow-hidden p-1.5 text-left transition sm:p-2 ${
                       cell.inMonth ? "bg-white" : "bg-[#F8FBFC]"
                     } ${
                       cell.inCampaign && cell.inMonth
@@ -431,8 +432,9 @@ export function OccasionsCalendarView({
               })}
             </motion.div>
           </AnimatePresence>
+          </div>
 
-          <div className="flex flex-wrap items-center gap-3 border-t border-[#E8F4F7] bg-[#F8FBFC] px-4 py-3">
+          <div className="flex shrink-0 flex-wrap items-center gap-3 border-t border-[#E8F4F7] bg-[#F8FBFC] px-4 py-3">
             <span className="text-[10px] font-bold uppercase tracking-wider text-[#7A93A9]">
               Legend
             </span>
@@ -458,9 +460,9 @@ export function OccasionsCalendarView({
           </div>
         </div>
 
-        <div className="space-y-3">
-          <div className="rounded-2xl border border-[#C4EBF2] bg-white p-4 shadow-sm">
-            <div className="flex items-start justify-between gap-2">
+        <div className="flex min-h-[720px] flex-col gap-3 xl:h-full xl:min-h-[760px]">
+          <div className="flex min-h-0 flex-[0.9] flex-col overflow-hidden rounded-2xl border border-[#C4EBF2] bg-white p-4 shadow-sm">
+            <div className="flex shrink-0 items-start justify-between gap-2">
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-wider text-[#38B2D1]">
                   Selected day
@@ -484,7 +486,7 @@ export function OccasionsCalendarView({
               </span>
             </div>
 
-            <div className="mt-3 max-h-[220px] space-y-2 overflow-y-auto">
+            <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto">
               {selectedEvents.length ? (
                 selectedEvents.map((event) => {
                   const style = categoryStyle(event.tile.category);
@@ -552,12 +554,11 @@ export function OccasionsCalendarView({
             </div>
           </div>
 
-          <div>
-            <p className="mb-2 text-sm font-bold text-[#0B1F3D]">
-              Occasion Preview
-            </p>
-            <OccasionPreviewCard tile={previewTile} onEdit={onEdit} />
-          </div>
+          <OccasionPreviewCard
+            tile={previewTile}
+            onEdit={onEdit}
+            className="flex min-h-0 flex-[1.1] flex-col"
+          />
         </div>
       </div>
 

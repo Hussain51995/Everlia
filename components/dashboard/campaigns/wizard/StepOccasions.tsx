@@ -336,7 +336,7 @@ export function StepOccasions() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.22 }}
-            className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-5"
+            className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-5"
           >
             <div className="overflow-hidden rounded-2xl border border-[#C4EBF2] bg-[#F8FBFC]">
               <div className="max-h-[420px] space-y-2 overflow-y-auto p-2.5 sm:p-3">
@@ -411,10 +411,7 @@ export function StepOccasions() {
               </div>
             </div>
 
-            <div className="space-y-3">
-              <p className="text-sm font-bold text-[#0B1F3D]">Occasion Preview</p>
-              <OccasionPreviewCard tile={previewTile} onEdit={openEditor} />
-            </div>
+            <OccasionPreviewCard tile={previewTile} onEdit={openEditor} />
           </motion.div>
         ) : (
           <motion.div
