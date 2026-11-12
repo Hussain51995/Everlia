@@ -33,7 +33,7 @@ const TITLES: Record<number, { title: string; subtitle: string }> = {
   },
   4: {
     title: "Configure occasions",
-    subtitle: "Defaults are preselected — customize as needed.",
+    subtitle: "Define the occasions you'll send to clients for scheduling.",
   },
   5: {
     title: "Review campaign",
