@@ -1,4 +1,6 @@
+
 const artworkAssets = [
+  "./lib/artwork/assets/fonts/**/*",
   "./public/fonts/**/*",
   "./public/templates/**/*",
 ];
@@ -10,10 +12,10 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ["sharp", "opentype.js"],
     outputFileTracingIncludes: {
-      "/api/**/*": artworkAssets,
-      "/api/cards/**/*": artworkAssets,
-      "/api/campaigns/**/*": artworkAssets,
-      "/api/cron/**/*": artworkAssets,
+      "/api/cards/[id]/artwork": artworkAssets,
+      "/api/cards/[id]/send": artworkAssets,
+      "/api/campaigns/preview": artworkAssets,
+      "/api/cron/campaign-mailings": artworkAssets,
     },
   },
 };

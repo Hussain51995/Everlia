@@ -45,23 +45,46 @@ async function getParseOpenType(): Promise<OpenTypeParse> {
   return parseFn;
 }
 
+function assertTrueTypeFont(buf: Buffer, filename: string): Buffer {
+  if (buf.length < 4) {
+    throw new Error(`Font ${filename} is empty or truncated`);
+  }
+  const tag = buf.subarray(0, 4).toString("binary");
+  const isTtf =
+    buf[0] === 0x00 && buf[1] === 0x01 && buf[2] === 0x00 && buf[3] === 0x00;
+  const isOtto = tag === "OTTO" || tag === "true" || tag === "typ1";
+  if (!isTtf && !isOtto) {
+    throw new Error(
+      `Font ${filename} is not a valid TTF/OTF (got ${buf.subarray(0, 8).toString("hex")})`
+    );
+  }
+  return buf;
+}
+
 async function loadFontFileBuffer(filename: string): Promise<Buffer> {
   const fs = await import("fs/promises");
   const path = await import("path");
 
-  const candidates = [
-    path.join(process.cwd(), "public", "fonts", filename),
-    path.join(process.cwd(), ".next", "server", "public", "fonts", filename),
-  ];
+  const candidates: string[] = [];
   if (typeof __dirname === "string") {
+    candidates.push(path.join(__dirname, "assets", "fonts", filename));
     candidates.push(
-      path.join(__dirname, "..", "..", "public", "fonts", filename)
+      path.join(__dirname, "..", "artwork", "assets", "fonts", filename)
+    );
+    candidates.push(
+      path.join(__dirname, "artwork", "assets", "fonts", filename)
     );
   }
+  candidates.push(
+    path.join(process.cwd(), "lib", "artwork", "assets", "fonts", filename),
+    path.join(process.cwd(), "public", "fonts", filename),
+    path.join(process.cwd(), ".next", "server", "public", "fonts", filename)
+  );
 
   for (const fontPath of candidates) {
     try {
-      return await fs.readFile(fontPath);
+      const buf = await fs.readFile(fontPath);
+      return assertTrueTypeFont(buf, filename);
     } catch {
     }
   }
@@ -72,7 +95,10 @@ async function loadFontFileBuffer(filename: string): Promise<Buffer> {
       `Failed to load ${filename} (local missing, HTTP ${response.status})`
     );
   }
-  return Buffer.from(await response.arrayBuffer());
+  return assertTrueTypeFont(
+    Buffer.from(await response.arrayBuffer()),
+    filename
+  );
 }
 
 async function getBundledFontFile(id: BundledFontId): Promise<Buffer> {
