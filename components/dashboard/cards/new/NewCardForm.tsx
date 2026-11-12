@@ -174,7 +174,9 @@ export function NewCardForm() {
     );
   }
 
-  const handleCreateCustomer = async () => {
+  const handleCreateCustomer = async (options?: {
+    startCampaign?: boolean;
+  }) => {
     try {
       const result = await createCustomer.mutateAsync(newCustomer);
       setCustomerId(result.customer.id);
@@ -183,8 +185,13 @@ export function NewCardForm() {
       showToast({
         tone: "success",
         title: "Customer added",
-        description: "You can now personalize and save the card.",
+        description: options?.startCampaign
+          ? "Opening campaign setup…"
+          : "You can now personalize and save the card.",
       });
+      if (options?.startCampaign) {
+        router.push("/dashboard/customers?start=1");
+      }
     } catch (error) {
       showToast({
         tone: "error",
@@ -348,6 +355,9 @@ export function NewCardForm() {
                 newCustomer={newCustomer}
                 onNewCustomerChange={setNewCustomer}
                 onCreateCustomer={() => void handleCreateCustomer()}
+                onCreateCustomerAndStartCampaign={() =>
+                  void handleCreateCustomer({ startCampaign: true })
+                }
                 isCreatingCustomer={createCustomer.isPending}
                 occasionHeading={occasionHeading}
                 onOccasionHeadingChange={setOccasionHeading}

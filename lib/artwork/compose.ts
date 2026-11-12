@@ -27,6 +27,22 @@ const BUNDLED_FONT_FILES: Record<BundledFontId, string> = {
 
 let parseOpenType: OpenTypeParse | null = null;
 const fontCache = new Map<BundledFontId, Font>();
+const fontFileCache = new Map<BundledFontId, Buffer>();
+
+const FONT_CSS_FAMILY: Record<BundledFontId, string> = {
+  "caveat-bold": "CardCaveatBold",
+  "noto-sans-regular": "CardNotoSans",
+  "noto-sans-bold": "CardNotoSansBold",
+};
+
+function escapeSvgText(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
 
 async function getParseOpenType(): Promise<OpenTypeParse> {
   if (parseOpenType) return parseOpenType;
@@ -61,11 +77,19 @@ async function loadFontFileBuffer(filename: string): Promise<Buffer> {
   }
 }
 
+async function getBundledFontFile(id: BundledFontId): Promise<Buffer> {
+  const cached = fontFileCache.get(id);
+  if (cached) return cached;
+  const fontBuf = await loadFontFileBuffer(BUNDLED_FONT_FILES[id]);
+  fontFileCache.set(id, fontBuf);
+  return fontBuf;
+}
+
 async function getBundledFont(id: BundledFontId): Promise<Font> {
   const cached = fontCache.get(id);
   if (cached) return cached;
 
-  const fontBuf = await loadFontFileBuffer(BUNDLED_FONT_FILES[id]);
+  const fontBuf = await getBundledFontFile(id);
   const ab = fontBuf.buffer.slice(
     fontBuf.byteOffset,
     fontBuf.byteOffset + fontBuf.byteLength
@@ -98,27 +122,6 @@ function measureTextWidth(
   const base = font.getAdvanceWidth(text, fontSize);
   if (!letterSpacing || text.length <= 1) return base;
   return base + letterSpacing * (text.length - 1);
-}
-
-function textToPathData(
-  font: Font,
-  text: string,
-  x: number,
-  y: number,
-  fontSize: number,
-  letterSpacing = 0
-): string {
-  if (!letterSpacing) {
-    return font.getPath(text, x, y, fontSize).toPathData(2);
-  }
-
-  let cursor = x;
-  const parts: string[] = [];
-  for (const char of text) {
-    parts.push(font.getPath(char, cursor, y, fontSize).toPathData(2));
-    cursor += font.getAdvanceWidth(char, fontSize) + letterSpacing;
-  }
-  return parts.join(" ");
 }
 
 function breakWordToWidth(
@@ -270,13 +273,23 @@ async function fetchBuffer(url: string): Promise<Buffer> {
   return fs.readFile(filePath);
 }
 
-async function textSvgOverlay(
+type PreparedTextLayout = {
+  font: Font;
+  fontId: BundledFontId;
+  fontSize: number;
+  color: string;
+  letterSpacing: number;
+  lines: Array<{ text: string; x: number; baselineY: number }>;
+  needsShadow: boolean;
+};
+
+function prepareTextLayout(
   width: number,
-  height: number,
   field: DesignField,
-  value: string
-): Promise<Buffer> {
-  const font = await getBundledFont(resolveBundledFontId(field));
+  value: string,
+  font: Font,
+  fontId: BundledFontId
+): PreparedTextLayout {
   const fontSize = field.fontSize ?? 36;
   const color = field.color ?? "#0B1F3D";
   const align = field.align ?? "left";
@@ -288,7 +301,7 @@ async function textSvgOverlay(
 
   const displayValue =
     field.textTransform === "uppercase" ? value.toUpperCase() : value;
-  const lines = wrapTextByWidth(
+  const wrapped = wrapTextByWidth(
     font,
     displayValue,
     fontSize,
@@ -297,29 +310,128 @@ async function textSvgOverlay(
     letterSpacing
   );
 
-  const needsShadow = isLightFillColor(color);
+  const lines = wrapped.map((text, index) => {
+    const lineWidth = measureTextWidth(font, text, fontSize, letterSpacing);
+    let x = field.x;
+    if (align === "center") x = field.x + (boxWidth - lineWidth) / 2;
+    else if (align === "right") x = field.x + boxWidth - lineWidth;
+    return {
+      text,
+      x,
+      baselineY: field.y + fontSize + index * lineHeight,
+    };
+  });
 
-  const paths = lines
-    .map((line, index) => {
-      const lineWidth = measureTextWidth(font, line, fontSize, letterSpacing);
-      let x = field.x;
-      if (align === "center") x = field.x + (boxWidth - lineWidth) / 2;
-      else if (align === "right") x = field.x + boxWidth - lineWidth;
+  return {
+    font,
+    fontId,
+    fontSize,
+    color,
+    letterSpacing,
+    lines,
+    needsShadow: isLightFillColor(color),
+  };
+}
 
-      const y = field.y + fontSize + index * lineHeight;
-      const d = textToPathData(font, line, x, y, fontSize, letterSpacing);
-      const shadow = needsShadow
-        ? `<path d="${d}" fill="rgba(10,8,12,0.55)" transform="translate(0 2)"/>`
-        : "";
-      return `${shadow}<path d="${d}" fill="${color}"/>`;
+async function renderTextWithEmbeddedFont(
+  width: number,
+  height: number,
+  layout: PreparedTextLayout
+): Promise<Buffer> {
+  const fontBuf = await getBundledFontFile(layout.fontId);
+  const family = FONT_CSS_FAMILY[layout.fontId];
+  const face = `@font-face{font-family:'${family}';src:url('data:font/ttf;charset=utf-8;base64,${fontBuf.toString("base64")}') format('truetype');}`;
+
+  const letterSpacingAttr =
+    layout.letterSpacing !== 0
+      ? ` letter-spacing="${layout.letterSpacing}"`
+      : "";
+
+  const textNodes = layout.lines
+    .flatMap((line) => {
+      const content = escapeSvgText(line.text);
+      const nodes: string[] = [];
+      if (layout.needsShadow) {
+        nodes.push(
+          `<text x="${line.x}" y="${line.baselineY + 2}" font-family="${family}" font-size="${layout.fontSize}" fill="rgba(10,8,12,0.55)"${letterSpacingAttr}>${content}</text>`
+        );
+      }
+      nodes.push(
+        `<text x="${line.x}" y="${line.baselineY}" font-family="${family}" font-size="${layout.fontSize}" fill="${layout.color}"${letterSpacingAttr}>${content}</text>`
+      );
+      return nodes;
     })
     .join("\n  ");
 
-  const svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-  ${paths}
+  const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+  <defs><style type="text/css"><![CDATA[${face}]]></style></defs>
+  ${textNodes}
 </svg>`;
 
-  return Buffer.from(svg);
+  return sharp(Buffer.from(svg)).png().toBuffer();
+}
+
+async function renderTextWithGlyphPaths(
+  width: number,
+  height: number,
+  layout: PreparedTextLayout
+): Promise<Buffer> {
+  const pathNodes: string[] = [];
+
+  for (const line of layout.lines) {
+    let cursor = line.x;
+    for (const char of line.text) {
+      const d = layout.font
+        .getPath(char, cursor, line.baselineY, layout.fontSize)
+        .toPathData(3);
+      if (d) {
+        if (layout.needsShadow) {
+          pathNodes.push(
+            `<path d="${d}" fill="rgba(10,8,12,0.55)" transform="translate(0 2)"/>`
+          );
+        }
+        pathNodes.push(`<path d="${d}" fill="${layout.color}"/>`);
+      }
+      cursor +=
+        layout.font.getAdvanceWidth(char, layout.fontSize) +
+        layout.letterSpacing;
+    }
+  }
+
+  const svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+  ${pathNodes.join("\n  ")}
+</svg>`;
+
+  return sharp(Buffer.from(svg)).png().toBuffer();
+}
+
+async function textSvgOverlay(
+  width: number,
+  height: number,
+  field: DesignField,
+  value: string
+): Promise<Buffer> {
+  const fontId = resolveBundledFontId(field);
+  const font = await getBundledFont(fontId);
+  const layout = prepareTextLayout(width, field, value, font, fontId);
+  if (layout.lines.length === 0) {
+    return sharp({
+      create: {
+        width,
+        height,
+        channels: 4,
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      },
+    })
+      .png()
+      .toBuffer();
+  }
+
+  if (fontId === "caveat-bold") {
+    return renderTextWithGlyphPaths(width, height, layout);
+  }
+  return renderTextWithEmbeddedFont(width, height, layout);
 }
 
 function isLightFillColor(color: string): boolean {

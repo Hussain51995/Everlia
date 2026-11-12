@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, Fragment, useMemo, useState } from "react";
+import { FormEvent, Fragment, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   useCreateCustomer,
   useCustomers,
@@ -13,10 +14,11 @@ import {
 } from "@/hooks/campaigns";
 import { ThemeLoader } from "@/components/ui/ThemeLoader";
 import { RefetchButton } from "@/components/ui/RefetchButton";
-import { TrashIcon } from "@/components/ui/Icons";
+import { SparklesIcon, TrashIcon } from "@/components/ui/Icons";
 import { useToast } from "@/components/ui/Toast";
 import { ApiClientError, apiClient } from "@/lib/api/client";
 import type { Customer, CustomerMilestone } from "@/lib/types/cards";
+import { StartCampaignDialog } from "@/components/dashboard/campaigns/StartCampaignDialog";
 
 const EMPTY = {
   first_name: "",
@@ -222,6 +224,7 @@ function CustomerMilestonesPanel({ customer }: { customer: Customer }) {
 }
 
 export default function CustomersPage() {
+  const searchParams = useSearchParams();
   const { data: customers, isLoading, error, refetch, isFetching } =
     useCustomers();
   const createCustomer = useCreateCustomer();
@@ -230,64 +233,80 @@ export default function CustomersPage() {
   const [form, setForm] = useState(EMPTY);
   const [open, setOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [startCampaignOpen, setStartCampaignOpen] = useState(false);
 
-  const onSubmit = async (e: FormEvent) => {
+  useEffect(() => {
+    if (searchParams.get("add") === "1") {
+      setOpen(true);
+    }
+    if (searchParams.get("start") === "1") {
+      setStartCampaignOpen(true);
+    }
+  }, [searchParams]);
+
+  const saveCustomer = async () => {
+    const { birthday, closing_date, property_type, ...customerFields } = form;
+    const result = await createCustomer.mutateAsync(customerFields);
+    const customerId = result.customer.id;
+
+    const milestonePosts: Promise<unknown>[] = [];
+    if (birthday) {
+      milestonePosts.push(
+        apiClient<{ milestone: CustomerMilestone }>(
+          `/api/customers/${customerId}/milestones`,
+          {
+            method: "POST",
+            body: {
+              milestone_type: "birthday",
+              anchor_date: birthday,
+              recurs_annually: true,
+            },
+          }
+        )
+      );
+    }
+    if (closing_date) {
+      milestonePosts.push(
+        apiClient<{ milestone: CustomerMilestone }>(
+          `/api/customers/${customerId}/milestones`,
+          {
+            method: "POST",
+            body: {
+              milestone_type: "closing_anniversary",
+              anchor_date: closing_date,
+              property_type: property_type || "",
+              recurs_annually: true,
+            },
+          }
+        )
+      );
+      milestonePosts.push(
+        apiClient<{ milestone: CustomerMilestone }>(
+          `/api/customers/${customerId}/milestones`,
+          {
+            method: "POST",
+            body: {
+              milestone_type: "home_anniversary",
+              anchor_date: closing_date,
+              property_type: property_type || "",
+              recurs_annually: true,
+            },
+          }
+        ).catch(() => undefined)
+      );
+    }
+
+    await Promise.all(milestonePosts);
+    return { birthday, closing_date };
+  };
+
+  const onSubmit = async (
+    e: FormEvent,
+    options?: { startCampaign?: boolean }
+  ) => {
     e.preventDefault();
     try {
-      const { birthday, closing_date, property_type, ...customerFields } = form;
-      const result = await createCustomer.mutateAsync(customerFields);
-      const customerId = result.customer.id;
-
-      const milestonePosts: Promise<unknown>[] = [];
-      if (birthday) {
-        milestonePosts.push(
-          apiClient<{ milestone: CustomerMilestone }>(
-            `/api/customers/${customerId}/milestones`,
-            {
-              method: "POST",
-              body: {
-                milestone_type: "birthday",
-                anchor_date: birthday,
-                recurs_annually: true,
-              },
-            }
-          )
-        );
-      }
-      if (closing_date) {
-        milestonePosts.push(
-          apiClient<{ milestone: CustomerMilestone }>(
-            `/api/customers/${customerId}/milestones`,
-            {
-              method: "POST",
-              body: {
-                milestone_type: "closing_anniversary",
-                anchor_date: closing_date,
-                property_type: property_type || "",
-                recurs_annually: true,
-              },
-            }
-          )
-        );
-        // Mirror as home anniversary when closing is set (real-estate default)
-        milestonePosts.push(
-          apiClient<{ milestone: CustomerMilestone }>(
-            `/api/customers/${customerId}/milestones`,
-            {
-              method: "POST",
-              body: {
-                milestone_type: "home_anniversary",
-                anchor_date: closing_date,
-                property_type: property_type || "",
-                recurs_annually: true,
-              },
-            }
-          ).catch(() => undefined)
-        );
-      }
-
-      await Promise.all(milestonePosts);
-
+      const { birthday, closing_date } = await saveCustomer();
       setForm(EMPTY);
       setOpen(false);
       showToast({
@@ -298,6 +317,9 @@ export default function CustomersPage() {
             ? "Milestones were stored for campaign occasions."
             : undefined,
       });
+      if (options?.startCampaign) {
+        setStartCampaignOpen(true);
+      }
     } catch (err) {
       showToast({
         tone: "error",
@@ -320,7 +342,7 @@ export default function CustomersPage() {
             and property milestones.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <RefetchButton
             onClick={() => refetch()}
             isRefreshing={isFetching && !isLoading}
@@ -328,16 +350,24 @@ export default function CustomersPage() {
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            className="rounded-xl bg-[#38B2D1] px-4 py-2.5 text-xs font-bold text-white"
+            className="rounded-xl border border-[#C4EBF2] bg-white px-4 py-2.5 text-xs font-bold text-[#0B1F3D] transition hover:bg-[#F8FBFC]"
           >
             {open ? "Close form" : "Add customer"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setStartCampaignOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-[#38B2D1] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#2ca0be]"
+          >
+            <SparklesIcon className="h-4 w-4" />
+            Start Campaign
           </button>
         </div>
       </div>
 
       {open ? (
         <form
-          onSubmit={onSubmit}
+          onSubmit={(e) => onSubmit(e)}
           className="grid gap-3 rounded-3xl border border-[#C4EBF2] bg-white p-5 sm:grid-cols-2"
         >
           {(
@@ -413,13 +443,24 @@ export default function CustomersPage() {
             </select>
           </label>
 
-          <div className="sm:col-span-2">
+          <div className="flex flex-col gap-2 sm:col-span-2 sm:flex-row sm:items-center">
             <button
               type="submit"
               disabled={createCustomer.isPending}
-              className="rounded-xl bg-[#0B1F3D] px-4 py-2.5 text-xs font-bold text-white disabled:opacity-60"
+              className="rounded-xl border border-[#C4EBF2] bg-white px-4 py-2.5 text-xs font-bold text-[#0B1F3D] transition hover:bg-[#F8FBFC] disabled:opacity-60"
             >
-              {createCustomer.isPending ? "Saving…" : "Save customer"}
+              {createCustomer.isPending ? "Saving…" : "Save"}
+            </button>
+            <button
+              type="button"
+              disabled={createCustomer.isPending}
+              onClick={(e) => onSubmit(e, { startCampaign: true })}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#38B2D1] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#2ca0be] disabled:opacity-60"
+            >
+              <SparklesIcon className="h-3.5 w-3.5" />
+              {createCustomer.isPending
+                ? "Saving…"
+                : "Save and Start Campaign"}
             </button>
           </div>
         </form>
@@ -522,6 +563,11 @@ export default function CustomersPage() {
           </table>
         </div>
       )}
+
+      <StartCampaignDialog
+        open={startCampaignOpen}
+        onClose={() => setStartCampaignOpen(false)}
+      />
     </div>
   );
 }
