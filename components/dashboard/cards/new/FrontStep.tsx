@@ -14,6 +14,7 @@ type FrontStepProps = {
   newCustomer: NewCustomerFormState;
   onNewCustomerChange: (value: NewCustomerFormState) => void;
   onCreateCustomer: () => void;
+  onCreateCustomerAndStartCampaign: () => void;
   isCreatingCustomer: boolean;
   occasionHeading: string;
   onOccasionHeadingChange: (value: string) => void;
@@ -34,6 +35,7 @@ export function FrontStep({
   newCustomer,
   onNewCustomerChange,
   onCreateCustomer,
+  onCreateCustomerAndStartCampaign,
   isCreatingCustomer,
   occasionHeading,
   onOccasionHeadingChange,
@@ -92,6 +94,7 @@ export function FrontStep({
             value={newCustomer}
             onChange={onNewCustomerChange}
             onSave={onCreateCustomer}
+            onSaveAndStartCampaign={onCreateCustomerAndStartCampaign}
             isSaving={isCreatingCustomer}
             disabled={!showNewCustomer}
           />

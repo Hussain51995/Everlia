@@ -7,8 +7,12 @@ import { MetricsOverview } from "@/components/dashboard/MetricsOverview";
 import { LeadFunnelBarChart } from "@/components/dashboard/charts/LeadFunnelBarChart";
 import { CampaignPieChart } from "@/components/dashboard/charts/CampaignPieChart";
 import { RecentActivityTable } from "@/components/dashboard/RecentActivityTable";
-import { StartCampaignDialog } from "@/components/dashboard/campaigns/StartCampaignDialog";
-import { SparklesIcon, CalendarIcon, BuildingIcon } from "@/components/ui/Icons";
+import {
+  SparklesIcon,
+  CalendarIcon,
+  BuildingIcon,
+  UsersIcon,
+} from "@/components/ui/Icons";
 import { ThemeLoader } from "@/components/ui/ThemeLoader";
 import { RefetchButton } from "@/components/ui/RefetchButton";
 import { useAuthStore } from "@/stores/auth-store";
@@ -19,7 +23,6 @@ import { useDashboardStats } from "@/hooks/dashboard/use-dashboard-stats";
 export function DashboardHome() {
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
-  const [startCampaignOpen, setStartCampaignOpen] = useState(false);
   const profile = useAuthStore((state) => state.profile);
   const membership = useAuthStore((state) => state.membership);
   const isPlatformAdmin = useAuthStore((state) => state.isPlatformAdmin);
@@ -134,15 +137,21 @@ export function DashboardHome() {
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center lg:flex-col lg:items-stretch xl:flex-row">
-            <button
-              type="button"
-              onClick={() => setStartCampaignOpen(true)}
+            <Link
+              href="/dashboard/customers"
               className="group inline-flex min-h-[52px] items-center justify-center gap-2.5 rounded-2xl bg-[#38B2D1] px-6 py-3.5 text-sm font-black text-white shadow-lg shadow-[#38B2D1]/35 transition-all hover:-translate-y-0.5 hover:bg-[#43c5e6] hover:shadow-xl hover:shadow-[#38B2D1]/40 active:translate-y-0"
             >
               <SparklesIcon className="h-5 w-5 transition-transform group-hover:rotate-6" />
               Start Campaign
-            </button>
-            <div className="flex items-center gap-2">
+            </Link>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                href="/dashboard/customers?add=1"
+                className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-white/15 sm:flex-none"
+              >
+                <UsersIcon className="h-4 w-4" />
+                Add Customer
+              </Link>
               <Link
                 href="/dashboard/templates"
                 className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/5 px-4 py-2.5 text-xs font-bold text-white/85 transition hover:bg-white/10 hover:text-white sm:flex-none"
@@ -177,11 +186,6 @@ export function DashboardHome() {
           />
         </div>
       </div>
-
-      <StartCampaignDialog
-        open={startCampaignOpen}
-        onClose={() => setStartCampaignOpen(false)}
-      />
     </div>
   );
 }

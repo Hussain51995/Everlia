@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
-import { StartCampaignDialog } from "@/components/dashboard/campaigns/StartCampaignDialog";
 import { useSession } from "@/hooks/auth";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [startCampaignOpen, setStartCampaignOpen] = useState(false);
+  const router = useRouter();
   useSession();
 
   return (
@@ -16,7 +16,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <Sidebar
         mobileOpen={mobileSidebarOpen}
         onCloseMobile={() => setMobileSidebarOpen(false)}
-        onStartCampaign={() => setStartCampaignOpen(true)}
+        onStartCampaign={() => {
+          setMobileSidebarOpen(false);
+          router.push("/dashboard/customers");
+        }}
       />
 
       <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden">
@@ -28,11 +31,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {children}
         </main>
       </div>
-
-      <StartCampaignDialog
-        open={startCampaignOpen}
-        onClose={() => setStartCampaignOpen(false)}
-      />
     </div>
   );
 }
