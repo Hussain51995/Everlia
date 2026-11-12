@@ -28,21 +28,7 @@ const BUNDLED_FONT_FILES: Record<BundledFontId, string> = {
 let parseOpenType: OpenTypeParse | null = null;
 const fontCache = new Map<BundledFontId, Font>();
 const fontFileCache = new Map<BundledFontId, Buffer>();
-
-const FONT_CSS_FAMILY: Record<BundledFontId, string> = {
-  "caveat-bold": "CardCaveatBold",
-  "noto-sans-regular": "CardNotoSans",
-  "noto-sans-bold": "CardNotoSansBold",
-};
-
-function escapeSvgText(value: string) {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
-}
+const glyphPngCache = new Map<string, Buffer>();
 
 async function getParseOpenType(): Promise<OpenTypeParse> {
   if (parseOpenType) return parseOpenType;
@@ -62,19 +48,31 @@ async function getParseOpenType(): Promise<OpenTypeParse> {
 async function loadFontFileBuffer(filename: string): Promise<Buffer> {
   const fs = await import("fs/promises");
   const path = await import("path");
-  const fontPath = path.join(process.cwd(), "public", "fonts", filename);
 
-  try {
-    return await fs.readFile(fontPath);
-  } catch {
-    const response = await fetch(`${getAppUrl()}/fonts/${filename}`);
-    if (!response.ok) {
-      throw new Error(
-        `Failed to load ${filename} (local missing, HTTP ${response.status})`
-      );
-    }
-    return Buffer.from(await response.arrayBuffer());
+  const candidates = [
+    path.join(process.cwd(), "public", "fonts", filename),
+    path.join(process.cwd(), ".next", "server", "public", "fonts", filename),
+  ];
+  if (typeof __dirname === "string") {
+    candidates.push(
+      path.join(__dirname, "..", "..", "public", "fonts", filename)
+    );
   }
+
+  for (const fontPath of candidates) {
+    try {
+      return await fs.readFile(fontPath);
+    } catch {
+    }
+  }
+
+  const response = await fetch(`${getAppUrl()}/fonts/${filename}`);
+  if (!response.ok) {
+    throw new Error(
+      `Failed to load ${filename} (local missing, HTTP ${response.status})`
+    );
+  }
+  return Buffer.from(await response.arrayBuffer());
 }
 
 async function getBundledFontFile(id: BundledFontId): Promise<Buffer> {
@@ -333,45 +331,6 @@ function prepareTextLayout(
   };
 }
 
-async function renderTextWithEmbeddedFont(
-  width: number,
-  height: number,
-  layout: PreparedTextLayout
-): Promise<Buffer> {
-  const fontBuf = await getBundledFontFile(layout.fontId);
-  const family = FONT_CSS_FAMILY[layout.fontId];
-  const face = `@font-face{font-family:'${family}';src:url('data:font/ttf;charset=utf-8;base64,${fontBuf.toString("base64")}') format('truetype');}`;
-
-  const letterSpacingAttr =
-    layout.letterSpacing !== 0
-      ? ` letter-spacing="${layout.letterSpacing}"`
-      : "";
-
-  const textNodes = layout.lines
-    .flatMap((line) => {
-      const content = escapeSvgText(line.text);
-      const nodes: string[] = [];
-      if (layout.needsShadow) {
-        nodes.push(
-          `<text x="${line.x}" y="${line.baselineY + 2}" font-family="${family}" font-size="${layout.fontSize}" fill="rgba(10,8,12,0.55)"${letterSpacingAttr}>${content}</text>`
-        );
-      }
-      nodes.push(
-        `<text x="${line.x}" y="${line.baselineY}" font-family="${family}" font-size="${layout.fontSize}" fill="${layout.color}"${letterSpacingAttr}>${content}</text>`
-      );
-      return nodes;
-    })
-    .join("\n  ");
-
-  const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-  <defs><style type="text/css"><![CDATA[${face}]]></style></defs>
-  ${textNodes}
-</svg>`;
-
-  return sharp(Buffer.from(svg)).png().toBuffer();
-}
-
 async function renderTextWithGlyphPaths(
   width: number,
   height: number,
@@ -406,6 +365,108 @@ async function renderTextWithGlyphPaths(
   return sharp(Buffer.from(svg)).png().toBuffer();
 }
 
+async function rasterizeGlyphPng(
+  font: Font,
+  fontId: BundledFontId,
+  char: string,
+  fontSize: number,
+  color: string
+): Promise<{ png: Buffer; x1: number; y1: number; advance: number } | null> {
+  const advance = font.getAdvanceWidth(char, fontSize);
+  if (char === " ") {
+    return { png: Buffer.alloc(0), x1: 0, y1: 0, advance };
+  }
+
+  const path = font.getPath(char, 0, 0, fontSize);
+  const bb = path.getBoundingBox();
+  const pad = 3;
+  const gw = Math.max(1, Math.ceil(bb.x2 - bb.x1) + pad * 2);
+  const gh = Math.max(1, Math.ceil(bb.y2 - bb.y1) + pad * 2);
+  if (!Number.isFinite(gw) || !Number.isFinite(gh) || gw > 2000 || gh > 2000) {
+    return null;
+  }
+
+  const cacheKey = `${fontId}|${fontSize}|${color}|${char}`;
+  let png = glyphPngCache.get(cacheKey);
+  if (!png) {
+    const ox = -bb.x1 + pad;
+    const oy = -bb.y1 + pad;
+    const d = font.getPath(char, ox, oy, fontSize).toPathData(3);
+    if (!d) {
+      return { png: Buffer.alloc(0), x1: 0, y1: 0, advance };
+    }
+    const gsvg = Buffer.from(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${gw}" height="${gh}"><path d="${d}" fill="${color}"/></svg>`
+    );
+    png = await sharp(gsvg).png().toBuffer();
+    glyphPngCache.set(cacheKey, png);
+  }
+
+  return { png, x1: bb.x1 - pad, y1: bb.y1 - pad, advance };
+}
+
+async function renderTextWithGlyphPngs(
+  width: number,
+  height: number,
+  layout: PreparedTextLayout
+): Promise<Buffer> {
+  const composites: OverlayOptions[] = [];
+
+  for (const line of layout.lines) {
+    let cursor = line.x;
+    for (const char of line.text) {
+      if (layout.needsShadow && char !== " ") {
+        const shadow = await rasterizeGlyphPng(
+          layout.font,
+          layout.fontId,
+          char,
+          layout.fontSize,
+          "rgba(10,8,12,0.55)"
+        );
+        if (shadow?.png.length) {
+          composites.push({
+            input: shadow.png,
+            left: Math.round(cursor + shadow.x1),
+            top: Math.round(line.baselineY + shadow.y1 + 2),
+          });
+        }
+      }
+
+      const glyph = await rasterizeGlyphPng(
+        layout.font,
+        layout.fontId,
+        char,
+        layout.fontSize,
+        layout.color
+      );
+      if (!glyph) {
+        cursor += layout.font.getAdvanceWidth(char, layout.fontSize);
+        continue;
+      }
+      if (glyph.png.length) {
+        composites.push({
+          input: glyph.png,
+          left: Math.round(cursor + glyph.x1),
+          top: Math.round(line.baselineY + glyph.y1),
+        });
+      }
+      cursor += glyph.advance + layout.letterSpacing;
+    }
+  }
+
+  return sharp({
+    create: {
+      width,
+      height,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    },
+  })
+    .composite(composites)
+    .png()
+    .toBuffer();
+}
+
 async function textSvgOverlay(
   width: number,
   height: number,
@@ -431,7 +492,7 @@ async function textSvgOverlay(
   if (fontId === "caveat-bold") {
     return renderTextWithGlyphPaths(width, height, layout);
   }
-  return renderTextWithEmbeddedFont(width, height, layout);
+  return renderTextWithGlyphPngs(width, height, layout);
 }
 
 function isLightFillColor(color: string): boolean {

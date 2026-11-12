@@ -1,11 +1,19 @@
+const artworkAssets = [
+  "./public/fonts/**/*",
+  "./public/templates/**/*",
+];
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: { unoptimized: true },
   reactStrictMode: true,
   experimental: {
-    serverComponentsExternalPackages: ["sharp"],
+    serverComponentsExternalPackages: ["sharp", "opentype.js"],
     outputFileTracingIncludes: {
-      "/api/cards/[id]/artwork": ["./public/fonts/**/*"],
+      "/api/**/*": artworkAssets,
+      "/api/cards/**/*": artworkAssets,
+      "/api/campaigns/**/*": artworkAssets,
+      "/api/cron/**/*": artworkAssets,
     },
   },
 };
