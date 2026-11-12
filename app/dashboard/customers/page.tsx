@@ -1,6 +1,13 @@
 "use client";
 
-import { FormEvent, Fragment, useEffect, useMemo, useState } from "react";
+import {
+  FormEvent,
+  Fragment,
+  Suspense,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useSearchParams } from "next/navigation";
 import {
   useCreateCustomer,
@@ -224,6 +231,20 @@ function CustomerMilestonesPanel({ customer }: { customer: Customer }) {
 }
 
 export default function CustomersPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="py-16">
+          <ThemeLoader label="Loading…" size="lg" />
+        </div>
+      }
+    >
+      <CustomersPageContent />
+    </Suspense>
+  );
+}
+
+function CustomersPageContent() {
   const searchParams = useSearchParams();
   const { data: customers, isLoading, error, refetch, isFetching } =
     useCustomers();
