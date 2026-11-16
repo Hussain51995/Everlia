@@ -248,6 +248,47 @@ export const US_OCCASION_CATALOG: OccasionDefinition[] = [
     isDefaultSelected: true,
     sortOrder: 270,
   },
+
+  {
+    slug: "referral-january",
+    name: "Referral Card (January)",
+    kind: "fixed_calendar",
+    category: "popular_greeting",
+    rule: { type: "fixed_md", month: 1, day: 1, dateRole: "actual" },
+    defaultLeadDays: 7,
+    isDefaultSelected: true,
+    sortOrder: 102,
+  },
+  {
+    slug: "referral-april",
+    name: "Referral Card (April)",
+    kind: "fixed_calendar",
+    category: "popular_greeting",
+    rule: { type: "fixed_md", month: 4, day: 1, dateRole: "actual" },
+    defaultLeadDays: 7,
+    isDefaultSelected: true,
+    sortOrder: 125,
+  },
+  {
+    slug: "referral-july",
+    name: "Referral Card (July)",
+    kind: "fixed_calendar",
+    category: "popular_greeting",
+    rule: { type: "fixed_md", month: 7, day: 1, dateRole: "actual" },
+    defaultLeadDays: 7,
+    isDefaultSelected: true,
+    sortOrder: 128,
+  },
+  {
+    slug: "referral-october",
+    name: "Referral Card (October)",
+    kind: "fixed_calendar",
+    category: "popular_greeting",
+    rule: { type: "fixed_md", month: 10, day: 1, dateRole: "actual" },
+    defaultLeadDays: 7,
+    isDefaultSelected: true,
+    sortOrder: 135,
+  },
 ];
 
 export function getDefaultSelectedOccasions(): OccasionDefinition[] {

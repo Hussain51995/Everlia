@@ -158,6 +158,21 @@ describe("Phase 3 occasion messages + overrides", () => {
     expect(getOccasionMessageDefinition("unknown-slug").slug).toBe("custom");
   });
 
+  it("UNIT_PASS: quarterly referral card message definitions exist", () => {
+    for (const slug of [
+      "referral-january",
+      "referral-april",
+      "referral-july",
+      "referral-october",
+    ]) {
+      const def = getOccasionMessageDefinition(slug);
+      expect(def.slug).toBe(slug);
+      expect(
+        `${def.greetingTemplate} ${def.messageTemplate} ${def.footerTemplate ?? ""}`.toLowerCase()
+      ).toMatch(/refer/);
+    }
+  });
+
   it("UNIT_PASS: user override replaces greeting and validates placeholders", () => {
     const override = parseMessageOverride(
       "Congrats on {{milestone.years}} years, {{customer.firstName}}!"

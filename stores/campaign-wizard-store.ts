@@ -29,6 +29,7 @@ export type CampaignWizardState = {
   endDate: string;
   timezone: string;
   occasions: WizardOccasionDraft[];
+  optedOutOccasionSlugs: string[];
   includeCompanyLogo: boolean;
   draftCampaignId: string | null;
   setStep: (step: WizardStep) => void;
@@ -45,6 +46,8 @@ export type CampaignWizardState = {
   updateOccasion: (key: string, patch: Partial<WizardOccasionDraft>) => void;
   removeOccasion: (key: string) => void;
   addOccasion: (occasion: WizardOccasionDraft) => void;
+  optOutOccasionSlug: (slug: string) => void;
+  clearOptedOutOccasionSlug: (slug: string) => void;
   setDraftCampaignId: (id: string | null) => void;
   reset: () => void;
 };
@@ -69,6 +72,7 @@ const defaults = () => {
     endDate: dates.endDate,
     timezone: "America/New_York",
     occasions: [] as WizardOccasionDraft[],
+    optedOutOccasionSlugs: [] as string[],
     includeCompanyLogo: false,
     draftCampaignId: null as string | null,
   };
@@ -107,6 +111,17 @@ export const useCampaignWizardStore = create<CampaignWizardState>()(
         set({ occasions: get().occasions.filter((o) => o.key !== key) }),
       addOccasion: (occasion) =>
         set({ occasions: [...get().occasions, occasion] }),
+      optOutOccasionSlug: (slug) => {
+        const current = get().optedOutOccasionSlugs;
+        if (current.includes(slug)) return;
+        set({ optedOutOccasionSlugs: [...current, slug] });
+      },
+      clearOptedOutOccasionSlug: (slug) =>
+        set({
+          optedOutOccasionSlugs: get().optedOutOccasionSlugs.filter(
+            (s) => s !== slug
+          ),
+        }),
       setDraftCampaignId: (draftCampaignId) => set({ draftCampaignId }),
       reset: () => set(defaults()),
     }),
@@ -122,6 +137,7 @@ export const useCampaignWizardStore = create<CampaignWizardState>()(
         endDate: state.endDate,
         timezone: state.timezone,
         occasions: state.occasions,
+        optedOutOccasionSlugs: state.optedOutOccasionSlugs,
         includeCompanyLogo: state.includeCompanyLogo,
         draftCampaignId: state.draftCampaignId,
       }),

@@ -103,6 +103,14 @@ export function occasionIcon(tile: {
   if (slug === "birthday") return GiftIcon;
   if (slug === "home-anniversary") return HomeIcon;
   if (slug === "closing-anniversary") return BuildingIcon;
+  if (
+    slug === "referral-january" ||
+    slug === "referral-april" ||
+    slug === "referral-july" ||
+    slug === "referral-october"
+  ) {
+    return UserIcon;
+  }
   if (tile.category === "federal_holiday") return CalendarIcon;
   if (tile.category === "popular_greeting") return SparklesIcon;
   if (tile.category === "personal_milestone") return UserIcon;

@@ -39,7 +39,10 @@ export async function GET(request: Request) {
       // Table may not be migrated yet — serve code catalog
       const fallback = (
         defaultsOnly ? getDefaultSelectedOccasions() : US_OCCASION_CATALOG
-      ).filter((o) => !category || o.category === category);
+      )
+        .filter((o) => !category || o.category === category)
+        .slice()
+        .sort((a, b) => (a.sortOrder ?? 100) - (b.sortOrder ?? 100));
 
       return apiSuccess({
         occasions: fallback,
@@ -50,7 +53,10 @@ export async function GET(request: Request) {
     if (!data || data.length === 0) {
       const fallback = (
         defaultsOnly ? getDefaultSelectedOccasions() : US_OCCASION_CATALOG
-      ).filter((o) => !category || o.category === category);
+      )
+        .filter((o) => !category || o.category === category)
+        .slice()
+        .sort((a, b) => (a.sortOrder ?? 100) - (b.sortOrder ?? 100));
       return apiSuccess({ occasions: fallback, source: "catalog" });
     }
 
