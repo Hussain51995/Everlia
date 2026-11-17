@@ -1,3 +1,4 @@
+import { isCampaignLiveMailEnabled } from "@/lib/mail/mode-guard";
 import type {
   AuthorizeMailingInput,
   AuthorizeMailingResult,
@@ -11,6 +12,8 @@ export class FreePricingService implements PricingService {
 
   async quote(input: PricingQuoteInput): Promise<PricingQuote> {
     const currency = (input.currency ?? "USD").toUpperCase();
+    const liveEnabled = isCampaignLiveMailEnabled();
+    const isLive = input.mailingMode === "live";
     return {
       productMode: "free",
       billingMode: "waived",
@@ -23,12 +26,19 @@ export class FreePricingService implements PricingService {
       spendingLimitCents: input.spendingLimitCents ?? null,
       availableBudgetCents: null,
       committedSpendCents: 0,
-      displayLabel: "Free Testing Mode — No platform charges",
-      freeTestingBanner: "Free Testing Mode — No platform charges",
+      displayLabel: isLive && liveEnabled
+        ? "Live mailing enabled — platform charges waived"
+        : "Free Testing Mode — No platform charges",
+      freeTestingBanner:
+        isLive && liveEnabled
+          ? null
+          : "Free Testing Mode — No platform charges",
       physicalMailDisclaimer:
-        input.mailingMode === "test" || input.mailingMode === "dry_run"
-          ? "Physical postcards are not sent in test mode. Artwork and sandbox provider records may be created, but no live postage is incurred."
-          : "Live physical mailing is disabled unless separately approved and configured.",
+        isLive && liveEnabled
+          ? "Live physical mailing is enabled. Real PostGrid live postage may be incurred."
+          : input.mailingMode === "test" || input.mailingMode === "dry_run"
+            ? "Physical postcards are not sent in test mode. Artwork and sandbox provider records may be created, but no live postage is incurred."
+            : "Live physical mailing is disabled unless separately approved and configured.",
       chargesEnabled: false,
     };
   }
@@ -36,12 +46,12 @@ export class FreePricingService implements PricingService {
   async authorizeMailing(
     input: AuthorizeMailingInput
   ): Promise<AuthorizeMailingResult> {
-    if (input.mailingMode === "live") {
+    if (input.mailingMode === "live" && !isCampaignLiveMailEnabled()) {
       return {
         allowed: false,
         reason: "live_disabled",
         message:
-          "Live mailing is disabled. Free testing mode cannot authorize live postage.",
+          "Live mailing is disabled. Set CAMPAIGN_LIVE_MAIL_ENABLED=true and POSTGRID_MODE=live.",
       };
     }
 

@@ -112,8 +112,8 @@ describe("Phase 3 placeholders", () => {
       occasionSlug: "us-thanksgiving",
       context: { customer: { firstName: "Sam" } },
     });
-    expect(copy.message).toContain("Thanksgiving");
-    expect(copy.greeting).toBe("Happy Thanksgiving!");
+    expect(copy.message.toLowerCase()).toContain("thankful");
+    expect(copy.greeting).toBe("A Very Happy Thanksgiving!");
     expect(copy.greeting).not.toContain("Sam");
   });
 
@@ -158,10 +158,29 @@ describe("Phase 3 occasion messages + overrides", () => {
     expect(getOccasionMessageDefinition("unknown-slug").slug).toBe("custom");
   });
 
-  it("UNIT_PASS: user override replaces greeting and validates placeholders", () => {
+  it("UNIT_PASS: quarterly referral card message definitions exist", () => {
+    for (const slug of [
+      "referral-january",
+      "referral-april",
+      "referral-july",
+      "referral-october",
+    ]) {
+      const def = getOccasionMessageDefinition(slug);
+      expect(def.slug).toBe(slug);
+      expect(
+        `${def.greetingTemplate} ${def.messageTemplate} ${def.footerTemplate ?? ""}`.toLowerCase()
+      ).toMatch(/refer/);
+    }
+  });
+
+  it("UNIT_PASS: plain custom message overrides body, not greeting/heading", () => {
     const override = parseMessageOverride(
       "Congrats on {{milestone.years}} years, {{customer.firstName}}!"
     );
+    expect(override).toEqual({
+      messageTemplate:
+        "Congrats on {{milestone.years}} years, {{customer.firstName}}!",
+    });
     const copy = resolveOccasionCopy({
       occasionSlug: "home-anniversary",
       override,
@@ -170,7 +189,8 @@ describe("Phase 3 occasion messages + overrides", () => {
         milestone: { years: 3 },
       },
     });
-    expect(copy.greeting).toBe("Congrats on 3 years, Jordan!");
+    expect(copy.greeting).toBe("Happy Home Anniversary!");
+    expect(copy.message).toBe("Congrats on 3 years, Jordan!");
   });
 
   it("UNIT_PASS: JSON override can set message + clear footer", () => {
@@ -187,6 +207,66 @@ describe("Phase 3 occasion messages + overrides", () => {
     });
     expect(copy.message).toBe("Custom body for Christmas");
     expect(copy.footer).toBe("");
+  });
+
+  it("UNIT_PASS: resolve order is campaign custom → org library → code default", () => {
+    const orgDefinition = {
+      slug: "birthday",
+      greetingTemplate: "Org Birthday Greeting!",
+      messageTemplate: "Org birthday body for {{customer.firstName}}.",
+      footerTemplate: "ORG FOOTER.",
+    };
+
+    const fromOrg = resolveOccasionCopy({
+      occasionSlug: "birthday",
+      orgDefinition,
+      context: { customer: { firstName: "Alex" } },
+    });
+    expect(fromOrg.greeting).toBe("Org Birthday Greeting!");
+    expect(fromOrg.message).toBe("Org birthday body for Alex.");
+    expect(fromOrg.footer).toBe("ORG FOOTER.");
+
+    const plainCustom = parseMessageOverride(
+      "Campaign custom body for {{customer.firstName}}."
+    );
+    const fromCustom = resolveOccasionCopy({
+      occasionSlug: "birthday",
+      override: plainCustom,
+      orgDefinition,
+      context: { customer: { firstName: "Alex" } },
+    });
+    expect(fromCustom.greeting).toBe("Org Birthday Greeting!");
+    expect(fromCustom.message).toBe("Campaign custom body for Alex.");
+    expect(fromCustom.footer).toBe("ORG FOOTER.");
+
+    const fromCode = resolveOccasionCopy({
+      occasionSlug: "birthday",
+      context: { customer: { firstName: "Alex" } },
+    });
+    expect(fromCode.greeting).toBe("Happy Birthday!");
+    expect(fromCode.message).toContain("special day");
+  });
+
+  it("UNIT_PASS: blank campaign custom uses org message in personalize", () => {
+    const orgDefinition = {
+      slug: "birthday",
+      greetingTemplate: "Library Hello!",
+      messageTemplate: "Library body for {{customer.firstName}}.",
+      footerTemplate: "LIBRARY FOOTER.",
+    };
+    const result = personalizeCampaignCard({
+      designConfig: sampleDesign(),
+      occasionSlug: "birthday",
+      messageTemplateOverride: "   ",
+      orgMessageDefinition: orgDefinition,
+      customer: { first_name: "Sam", last_name: "Lee" },
+    });
+    expect(result.greeting).toBe("Library Hello!");
+    expect(result.message).toBe("Library body for Sam.");
+    expect(result.footer).toBe("LIBRARY FOOTER.");
+    expect(result.fieldValues.personal_message).toBe(
+      "Library body for Sam."
+    );
   });
 
   it("UNIT_PASS: lists placeholders used in a template", () => {
@@ -284,7 +364,7 @@ describe("Phase 3 master design field mapping", () => {
     });
     expect(result.greeting).toBe("Happy Home Anniversary!");
     expect(result.greeting).not.toMatch(/Casey/i);
-    expect(result.message).toContain("6 years");
+    expect(result.message).toContain("6 wonderful years");
   });
 
   it("UNIT_PASS: missing-data custom occasion still produces copy", () => {

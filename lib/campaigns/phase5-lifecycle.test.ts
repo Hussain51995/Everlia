@@ -30,7 +30,12 @@ describe("Phase 5 campaign helpers", () => {
     expect(isOrgAdminRole("member")).toBe(false);
   });
 
-  it("UNIT_PASS: live mode rejected by create schema", () => {
+  it("UNIT_PASS: live mode rejected by create schema when disabled", () => {
+    const prevLive = process.env.CAMPAIGN_LIVE_MAIL_ENABLED;
+    const prevMode = process.env.POSTGRID_MODE;
+    delete process.env.CAMPAIGN_LIVE_MAIL_ENABLED;
+    process.env.POSTGRID_MODE = "test";
+
     const parsed = campaignCreateSchema.safeParse({
       name: "Test",
       defaultTemplateId: "00000000-0000-4000-8000-000000000001",
@@ -41,6 +46,22 @@ describe("Phase 5 campaign helpers", () => {
       mailingMode: "live",
     });
     expect(parsed.success).toBe(false);
+
+    process.env.CAMPAIGN_LIVE_MAIL_ENABLED = "true";
+    process.env.POSTGRID_MODE = "live";
+    const allowed = campaignCreateSchema.safeParse({
+      name: "Test",
+      defaultTemplateId: "00000000-0000-4000-8000-000000000001",
+      startDate: "2026-01-01",
+      endDate: "2026-12-31",
+      customerIds: ["00000000-0000-4000-8000-000000000002"],
+      occasions: [{ occasionSlug: "birthday" }],
+      mailingMode: "live",
+    });
+    expect(allowed.success).toBe(true);
+
+    process.env.CAMPAIGN_LIVE_MAIL_ENABLED = prevLive;
+    process.env.POSTGRID_MODE = prevMode;
   });
 
   it("UNIT_PASS: master design eligibility requires a dynamic text region", () => {

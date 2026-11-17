@@ -3,6 +3,10 @@ import { apiError, apiSuccess, validationError } from "@/lib/api/response";
 import { requireActiveOrganization } from "@/lib/cards/require-org";
 import { campaignPreviewSchema } from "@/lib/validations/campaigns";
 import { generateCampaignArtworkPreview } from "@/lib/campaigns/preview";
+import {
+  getOrgOccasionMessageRow,
+  rowToDefinition,
+} from "@/lib/campaigns/org-messages";
 import type { DesignConfig } from "@/lib/types/cards";
 
 
@@ -114,6 +118,14 @@ export async function POST(request: Request) {
       .eq("organization_id", ctx.organizationId)
       .maybeSingle();
 
+    const orgMessageRow = occasionSlug
+      ? await getOrgOccasionMessageRow(
+          supabase,
+          ctx.organizationId,
+          occasionSlug
+        )
+      : null;
+
     const preview = await generateCampaignArtworkPreview({
       designConfig: template.design_config as DesignConfig,
       frontBackgroundUrl: template.front_background_url,
@@ -129,6 +141,9 @@ export async function POST(request: Request) {
       occasionSlug,
       occasionName,
       messageTemplateOverride: input.messageTemplateOverride,
+      orgMessageDefinition: orgMessageRow
+        ? rowToDefinition(orgMessageRow)
+        : null,
       milestone: input.milestone,
       campaignName: input.campaignName,
       includePdf: input.includePdf,
