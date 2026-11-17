@@ -112,8 +112,8 @@ describe("Phase 3 placeholders", () => {
       occasionSlug: "us-thanksgiving",
       context: { customer: { firstName: "Sam" } },
     });
-    expect(copy.message).toContain("Thanksgiving");
-    expect(copy.greeting).toBe("Happy Thanksgiving!");
+    expect(copy.message.toLowerCase()).toContain("thankful");
+    expect(copy.greeting).toBe("A Very Happy Thanksgiving!");
     expect(copy.greeting).not.toContain("Sam");
   });
 
@@ -173,10 +173,14 @@ describe("Phase 3 occasion messages + overrides", () => {
     }
   });
 
-  it("UNIT_PASS: user override replaces greeting and validates placeholders", () => {
+  it("UNIT_PASS: plain custom message overrides body, not greeting/heading", () => {
     const override = parseMessageOverride(
       "Congrats on {{milestone.years}} years, {{customer.firstName}}!"
     );
+    expect(override).toEqual({
+      messageTemplate:
+        "Congrats on {{milestone.years}} years, {{customer.firstName}}!",
+    });
     const copy = resolveOccasionCopy({
       occasionSlug: "home-anniversary",
       override,
@@ -185,7 +189,8 @@ describe("Phase 3 occasion messages + overrides", () => {
         milestone: { years: 3 },
       },
     });
-    expect(copy.greeting).toBe("Congrats on 3 years, Jordan!");
+    expect(copy.greeting).toBe("Happy Home Anniversary!");
+    expect(copy.message).toBe("Congrats on 3 years, Jordan!");
   });
 
   it("UNIT_PASS: JSON override can set message + clear footer", () => {
@@ -299,7 +304,7 @@ describe("Phase 3 master design field mapping", () => {
     });
     expect(result.greeting).toBe("Happy Home Anniversary!");
     expect(result.greeting).not.toMatch(/Casey/i);
-    expect(result.message).toContain("6 years");
+    expect(result.message).toContain("6 wonderful years");
   });
 
   it("UNIT_PASS: missing-data custom occasion still produces copy", () => {

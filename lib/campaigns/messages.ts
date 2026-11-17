@@ -47,7 +47,7 @@ export function parseMessageOverride(
     } catch {
     }
   }
-  return { greetingTemplate: trimmed };
+  return { messageTemplate: trimmed };
 }
 
 
