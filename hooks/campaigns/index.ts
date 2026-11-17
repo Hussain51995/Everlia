@@ -408,6 +408,8 @@ export function useCampaignArtworkPreview() {
   });
 }
 
+export { useOccasionMessageAiChat } from "@/hooks/campaigns/use-occasion-message-ai-chat";
+
 export function useOrgOccasionMessages() {
   const organizationId = useActiveOrgId();
   return useQuery({
