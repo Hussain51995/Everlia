@@ -209,6 +209,66 @@ describe("Phase 3 occasion messages + overrides", () => {
     expect(copy.footer).toBe("");
   });
 
+  it("UNIT_PASS: resolve order is campaign custom → org library → code default", () => {
+    const orgDefinition = {
+      slug: "birthday",
+      greetingTemplate: "Org Birthday Greeting!",
+      messageTemplate: "Org birthday body for {{customer.firstName}}.",
+      footerTemplate: "ORG FOOTER.",
+    };
+
+    const fromOrg = resolveOccasionCopy({
+      occasionSlug: "birthday",
+      orgDefinition,
+      context: { customer: { firstName: "Alex" } },
+    });
+    expect(fromOrg.greeting).toBe("Org Birthday Greeting!");
+    expect(fromOrg.message).toBe("Org birthday body for Alex.");
+    expect(fromOrg.footer).toBe("ORG FOOTER.");
+
+    const plainCustom = parseMessageOverride(
+      "Campaign custom body for {{customer.firstName}}."
+    );
+    const fromCustom = resolveOccasionCopy({
+      occasionSlug: "birthday",
+      override: plainCustom,
+      orgDefinition,
+      context: { customer: { firstName: "Alex" } },
+    });
+    expect(fromCustom.greeting).toBe("Org Birthday Greeting!");
+    expect(fromCustom.message).toBe("Campaign custom body for Alex.");
+    expect(fromCustom.footer).toBe("ORG FOOTER.");
+
+    const fromCode = resolveOccasionCopy({
+      occasionSlug: "birthday",
+      context: { customer: { firstName: "Alex" } },
+    });
+    expect(fromCode.greeting).toBe("Happy Birthday!");
+    expect(fromCode.message).toContain("special day");
+  });
+
+  it("UNIT_PASS: blank campaign custom uses org message in personalize", () => {
+    const orgDefinition = {
+      slug: "birthday",
+      greetingTemplate: "Library Hello!",
+      messageTemplate: "Library body for {{customer.firstName}}.",
+      footerTemplate: "LIBRARY FOOTER.",
+    };
+    const result = personalizeCampaignCard({
+      designConfig: sampleDesign(),
+      occasionSlug: "birthday",
+      messageTemplateOverride: "   ",
+      orgMessageDefinition: orgDefinition,
+      customer: { first_name: "Sam", last_name: "Lee" },
+    });
+    expect(result.greeting).toBe("Library Hello!");
+    expect(result.message).toBe("Library body for Sam.");
+    expect(result.footer).toBe("LIBRARY FOOTER.");
+    expect(result.fieldValues.personal_message).toBe(
+      "Library body for Sam."
+    );
+  });
+
   it("UNIT_PASS: lists placeholders used in a template", () => {
     expect(
       listPlaceholdersInTemplate(

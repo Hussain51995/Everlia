@@ -34,6 +34,7 @@ function SettingsHelperIcon(props: React.SVGProps<SVGSVGElement>) {
 const NAV_ITEMS = [
   { name: "Overview", href: "/dashboard", icon: LayoutDashboardIcon, badge: null },
   { name: "Campaigns", href: "/dashboard/campaigns", icon: CalendarIcon, badge: null },
+  { name: "Messages", href: "/dashboard/messages", icon: SparklesIcon, badge: null },
   { name: "Templates", href: "/dashboard/templates", icon: GiftIcon, badge: null },
   { name: "My Cards", href: "/dashboard/cards", icon: SendIcon, badge: null },
   { name: "Customers", href: "/dashboard/customers", icon: UsersIcon, badge: null },

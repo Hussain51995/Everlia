@@ -63,6 +63,12 @@ export const occasionKeys = {
     [...occasionKeys.all, "list", organizationId ?? "none", extras ?? ""] as const,
 };
 
+export const orgMessageKeys = {
+  all: ["org-occasion-messages"] as const,
+  list: (organizationId?: string | null) =>
+    [...orgMessageKeys.all, "list", organizationId ?? "none"] as const,
+};
+
 export const responseKeys = {
   all: ["responses"] as const,
   list: (organizationId?: string | null) =>
@@ -76,4 +82,5 @@ export const orgScopedKeys = [
   responseKeys.all,
   campaignKeys.all,
   occasionKeys.all,
+  orgMessageKeys.all,
 ] as const;

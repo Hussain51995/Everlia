@@ -6,6 +6,7 @@ import {
   campaignKeys,
   customerKeys,
   occasionKeys,
+  orgMessageKeys,
   templateKeys,
 } from "@/hooks/cards/keys";
 import { useAuthStore } from "@/stores/auth-store";
@@ -19,6 +20,7 @@ import type {
   CampaignMailing,
 } from "@/lib/types/campaigns";
 import type { OccasionDefinition } from "@/lib/campaigns/occasions";
+import type { EffectiveOccasionMessage } from "@/lib/campaigns/org-messages";
 import type {
   CampaignCreateInput,
   CampaignExtendInput,
@@ -27,6 +29,7 @@ import type {
   CustomerMilestoneCreateInput,
   CustomerMilestoneUpdateInput,
 } from "@/lib/validations/campaigns";
+import type { OrgOccasionMessageUpsertInput } from "@/lib/validations/org-messages";
 
 function useActiveOrgId() {
   return useAuthStore((state) => state.activeOrganizationId);
@@ -401,6 +404,55 @@ export function useCampaignArtworkPreview() {
         }
       );
       return { ...result, mailingId: input.mailingId, customerLabel: input.customerLabel };
+    },
+  });
+}
+
+export function useOrgOccasionMessages() {
+  const organizationId = useActiveOrgId();
+  return useQuery({
+    queryKey: orgMessageKeys.list(organizationId),
+    enabled: Boolean(organizationId),
+    queryFn: async () => {
+      const data = await apiClient<{
+        messages: EffectiveOccasionMessage[];
+        customizedCount: number;
+      }>("/api/organization/occasion-messages");
+      return data;
+    },
+  });
+}
+
+export function useUpsertOrgOccasionMessage() {
+  const organizationId = useActiveOrgId();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: OrgOccasionMessageUpsertInput) =>
+      apiClient<{ message: EffectiveOccasionMessage }>(
+        "/api/organization/occasion-messages",
+        { method: "PUT", body: input }
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: orgMessageKeys.list(organizationId),
+      });
+    },
+  });
+}
+
+export function useResetOrgOccasionMessage() {
+  const organizationId = useActiveOrgId();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (slug: string) =>
+      apiClient<{ message: EffectiveOccasionMessage | null; reset: boolean }>(
+        `/api/organization/occasion-messages?slug=${encodeURIComponent(slug)}`,
+        { method: "DELETE" }
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: orgMessageKeys.list(organizationId),
+      });
     },
   });
 }

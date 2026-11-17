@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useOccasions } from "@/hooks/campaigns";
 import { useCustomers } from "@/hooks/cards";
+import { useOrgOccasionMessages } from "@/hooks/campaigns";
 import {
   useCampaignWizardStore,
   type WizardOccasionDraft,
@@ -58,6 +59,7 @@ const CODE_DEFAULT_SLUGS = new Set(
 export function StepOccasions() {
   const { data: catalog, isLoading } = useOccasions();
   const { data: customers } = useCustomers();
+  const { data: orgMessagesData } = useOrgOccasionMessages();
   const occasions = useCampaignWizardStore((s) => s.occasions);
   const setOccasions = useCampaignWizardStore((s) => s.setOccasions);
   const updateOccasion = useCampaignWizardStore((s) => s.updateOccasion);
@@ -113,6 +115,14 @@ export function StepOccasions() {
       }));
   }, [customers, customerIds]);
 
+  const defaultMessageBySlug = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const row of orgMessagesData?.messages ?? []) {
+      map.set(row.occasionSlug, row.messageTemplate);
+    }
+    return map;
+  }, [orgMessagesData?.messages]);
+
   const tiles: TileModel[] = useMemo(() => {
     const bySlug = new Map(
       occasions
@@ -134,6 +144,7 @@ export function StepOccasions() {
           exclusionCount: draft?.excludedCustomerIds.length ?? 0,
           draft,
           catalog: o,
+          defaultMessagePreview: defaultMessageBySlug.get(o.slug),
         };
       });
 
@@ -151,10 +162,11 @@ export function StepOccasions() {
         occurrenceDate: o.occurrenceDate,
         draft: o,
         catalog: null,
+        defaultMessagePreview: defaultMessageBySlug.get("custom"),
       }));
 
     return [...catalogTiles, ...customTiles];
-  }, [catalog, occasions]);
+  }, [catalog, occasions, defaultMessageBySlug]);
 
   const visibleTiles = useMemo(() => {
     if (!categoryFilter) return tiles;
@@ -524,6 +536,11 @@ export function StepOccasions() {
         open={Boolean(editingKey && editingOccasion)}
         occasion={editingOccasion}
         customers={selectedCustomers}
+        defaultMessagePreview={
+          editingOccasion?.occasionSlug
+            ? defaultMessageBySlug.get(editingOccasion.occasionSlug)
+            : defaultMessageBySlug.get("custom")
+        }
         onClose={() => setEditingKey(null)}
         onSave={(key, patch) => updateOccasion(key, patch)}
         onRemove={(key) => removeOccasion(key)}

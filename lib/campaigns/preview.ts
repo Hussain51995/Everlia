@@ -9,7 +9,10 @@ import {
   type CampaignPersonalizeMilestone,
   type CampaignPersonalizeSender,
 } from "@/lib/campaigns/personalize";
-import type { OccasionMessageOverride } from "@/lib/campaigns/messages";
+import type {
+  OccasionMessageDefinition,
+  OccasionMessageOverride,
+} from "@/lib/campaigns/messages";
 
 export const CAMPAIGN_PREVIEW_QR_TOKEN = "campaign-preview";
 
@@ -22,6 +25,7 @@ export type CampaignArtworkPreviewInput = {
   occasionSlug?: string | null;
   occasionName?: string | null;
   messageTemplateOverride?: string | OccasionMessageOverride | null;
+  orgMessageDefinition?: OccasionMessageDefinition | null;
   milestone?: CampaignPersonalizeMilestone | null;
   campaignName?: string | null;
   baseFieldValues?: GreetingCardFieldValues;
@@ -62,6 +66,7 @@ export async function generateCampaignArtworkPreview(
       occasionSlug: input.occasionSlug,
       occasionName: input.occasionName,
       messageTemplateOverride: input.messageTemplateOverride,
+      orgMessageDefinition: input.orgMessageDefinition,
       customer: input.customer,
       sender: input.sender,
       milestone: input.milestone,

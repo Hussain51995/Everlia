@@ -208,9 +208,25 @@ export function getOccasionMessageDefinition(
 
 export function mergeOccasionMessageDefinition(
   slug: string | null | undefined,
-  override?: OccasionMessageOverride | null
+  override?: OccasionMessageOverride | null,
+  /** Org library definition applied before campaign custom override. */
+  orgDefinition?: OccasionMessageDefinition | null
 ): OccasionMessageDefinition {
-  const base = getOccasionMessageDefinition(slug);
+  const codeBase = getOccasionMessageDefinition(slug);
+  const base: OccasionMessageDefinition = orgDefinition
+    ? {
+        slug: codeBase.slug,
+        greetingTemplate:
+          orgDefinition.greetingTemplate || codeBase.greetingTemplate,
+        messageTemplate:
+          orgDefinition.messageTemplate || codeBase.messageTemplate,
+        footerTemplate:
+          orgDefinition.footerTemplate !== undefined
+            ? orgDefinition.footerTemplate
+            : codeBase.footerTemplate,
+      }
+    : codeBase;
+
   if (!override) return base;
   return {
     slug: base.slug,
@@ -233,11 +249,13 @@ export type ResolvedOccasionCopy = {
 export function resolveOccasionCopy(options: {
   occasionSlug?: string | null;
   override?: OccasionMessageOverride | null;
+  orgDefinition?: OccasionMessageDefinition | null;
   context: PlaceholderContext;
 }): ResolvedOccasionCopy {
   const definition = mergeOccasionMessageDefinition(
     options.occasionSlug,
-    options.override
+    options.override,
+    options.orgDefinition
   );
 
   for (const template of [

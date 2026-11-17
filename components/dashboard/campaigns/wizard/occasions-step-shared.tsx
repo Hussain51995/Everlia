@@ -84,6 +84,7 @@ export type TileModel = {
   occurrenceDate?: string;
   draft: WizardOccasionDraft | null;
   catalog: OccasionDefinition | null;
+  defaultMessagePreview?: string;
 };
 
 export function categoryLabel(category?: string) {
@@ -127,6 +128,9 @@ export function truncate(text: string, max = 42) {
 export function messagePreview(tile: TileModel) {
   const custom = tile.draft?.messageTemplate?.trim();
   if (custom) return truncate(custom);
+  if (tile.defaultMessagePreview?.trim()) {
+    return truncate(tile.defaultMessagePreview.trim());
+  }
   return truncate(`Send a personalized ${tile.name.toLowerCase()} greeting to…`);
 }
 

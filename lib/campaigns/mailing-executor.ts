@@ -3,6 +3,10 @@ import { writeCampaignAuditEvent } from "@/lib/campaigns/audit";
 import { completeDueCampaigns } from "@/lib/campaigns/complete";
 import { todayInTimezone } from "@/lib/campaigns/civil-today";
 import { personalizeCampaignCard } from "@/lib/campaigns/personalize";
+import {
+  getOrgOccasionMessageRow,
+  rowToDefinition,
+} from "@/lib/campaigns/org-messages";
 import { preflightCampaignMailing } from "@/lib/campaigns/preflight";
 import { MAX_MAILING_RETRIES, computeNextRetryAt } from "@/lib/campaigns/retry";
 import {
@@ -261,12 +265,24 @@ export async function processClaimedMailing(
       context.organization.name ||
       null;
 
+    const occasionSlug = context.occasion.occasion?.slug ?? null;
+    const orgMessageRow = occasionSlug
+      ? await getOrgOccasionMessageRow(
+          admin,
+          mailing.organization_id,
+          occasionSlug
+        )
+      : null;
+
     const personalized = personalizeCampaignCard({
       designConfig: context.template.design_config as DesignConfig,
-      occasionSlug: context.occasion.occasion?.slug,
+      occasionSlug,
       occasionName:
         context.occasion.occasion?.name ?? context.occasion.custom_name,
       messageTemplateOverride: context.occasion.message_template,
+      orgMessageDefinition: orgMessageRow
+        ? rowToDefinition(orgMessageRow)
+        : null,
       customer: {
         first_name: context.customer.first_name,
         last_name: context.customer.last_name,

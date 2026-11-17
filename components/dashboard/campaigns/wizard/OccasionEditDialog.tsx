@@ -21,6 +21,7 @@ type Props = {
   open: boolean;
   occasion: WizardOccasionDraft | null;
   customers: CustomerOption[];
+  defaultMessagePreview?: string | null;
   onClose: () => void;
   onSave: (key: string, patch: Partial<WizardOccasionDraft>) => void;
   onRemove: (key: string) => void;
@@ -30,6 +31,7 @@ export function OccasionEditDialog({
   open,
   occasion,
   customers,
+  defaultMessagePreview,
   onClose,
   onSave,
   onRemove,
@@ -204,8 +206,14 @@ export function OccasionEditDialog({
                 className={`${textInputClass} min-h-[88px]`}
                 value={messageTemplate}
                 onChange={(e) => setMessageTemplate(e.target.value)}
-                placeholder="Leave blank to use the default occasion message"
+                placeholder="Leave blank to use the Messages library default"
               />
+              {!messageTemplate.trim() && defaultMessagePreview?.trim() ? (
+                <p className="mt-2 rounded-xl bg-[#F8FCFD] px-3 py-2 text-xs text-[#557393]">
+                  <span className="font-bold text-[#0B1F3D]">Default: </span>
+                  {defaultMessagePreview.trim()}
+                </p>
+              ) : null}
             </div>
 
             <div>
