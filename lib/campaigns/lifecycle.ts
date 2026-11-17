@@ -4,6 +4,7 @@ import { todayInTimezone } from "@/lib/campaigns/civil-today";
 import { assertCampaignLifecycleAdmin } from "@/lib/campaigns/rbac";
 import { generateDurableSchedule } from "@/lib/campaigns/schedule";
 import { compareCivil } from "@/lib/campaigns/occasions";
+import { isCampaignLiveMailEnabled } from "@/lib/mail/mode-guard";
 import type { Campaign, CampaignStatus } from "@/lib/types/campaigns";
 
 type Ctx = {
@@ -75,16 +76,21 @@ export async function activateCampaign(ctx: Ctx): Promise<{
   if (campaign.status !== "draft" && campaign.status !== "scheduled") {
     throw new Error("Only draft campaigns can be activated");
   }
-  if (campaign.mailing_mode === "live") {
-    throw new Error("Live mailing mode is disabled");
-  }
   if (campaign.mailing_mode === "dry_run") {
     throw new Error("Dry-run campaigns cannot be activated; use test mode");
+  }
+  if (campaign.mailing_mode === "live" && !isCampaignLiveMailEnabled()) {
+    throw new Error(
+      "Live mailing mode is disabled. Set CAMPAIGN_LIVE_MAIL_ENABLED=true and POSTGRID_MODE=live."
+    );
   }
 
   const supabase = createClient();
 
-  if (campaign.mailing_mode !== "test") {
+  if (
+    campaign.mailing_mode !== "test" &&
+    campaign.mailing_mode !== "live"
+  ) {
     await supabase
       .from("campaigns")
       .update({ mailing_mode: "test" })

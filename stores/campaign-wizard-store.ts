@@ -28,6 +28,7 @@ export type CampaignWizardState = {
   startDate: string;
   endDate: string;
   timezone: string;
+  mailingMode: "test" | "live";
   occasions: WizardOccasionDraft[];
   optedOutOccasionSlugs: string[];
   includeCompanyLogo: boolean;
@@ -42,6 +43,7 @@ export type CampaignWizardState = {
   setStartDate: (date: string) => void;
   setEndDate: (date: string) => void;
   setTimezone: (tz: string) => void;
+  setMailingMode: (mode: "test" | "live") => void;
   setOccasions: (occasions: WizardOccasionDraft[]) => void;
   updateOccasion: (key: string, patch: Partial<WizardOccasionDraft>) => void;
   removeOccasion: (key: string) => void;
@@ -71,6 +73,7 @@ const defaults = () => {
     startDate: dates.startDate,
     endDate: dates.endDate,
     timezone: "America/New_York",
+    mailingMode: "test" as const,
     occasions: [] as WizardOccasionDraft[],
     optedOutOccasionSlugs: [] as string[],
     includeCompanyLogo: false,
@@ -100,6 +103,7 @@ export const useCampaignWizardStore = create<CampaignWizardState>()(
       setStartDate: (startDate) => set({ startDate }),
       setEndDate: (endDate) => set({ endDate }),
       setTimezone: (timezone) => set({ timezone }),
+      setMailingMode: (mailingMode) => set({ mailingMode }),
       setOccasions: (occasions) => set({ occasions }),
       updateOccasion: (key, patch) =>
         set({
@@ -136,6 +140,7 @@ export const useCampaignWizardStore = create<CampaignWizardState>()(
         startDate: state.startDate,
         endDate: state.endDate,
         timezone: state.timezone,
+        mailingMode: state.mailingMode,
         occasions: state.occasions,
         optedOutOccasionSlugs: state.optedOutOccasionSlugs,
         includeCompanyLogo: state.includeCompanyLogo,

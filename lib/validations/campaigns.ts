@@ -215,6 +215,24 @@ export type CampaignSchedulePreviewInput = z.input<
 
 export const campaignMailingModeSchema = z.enum(["dry_run", "test", "live"]);
 
+function rejectLiveUnlessEnabled(
+  mailingMode: string | undefined,
+  ctx: z.RefinementCtx
+) {
+  if (mailingMode !== "live") return;
+  const enabled =
+    process.env.CAMPAIGN_LIVE_MAIL_ENABLED === "true" &&
+    process.env.POSTGRID_MODE === "live";
+  if (!enabled) {
+    ctx.addIssue({
+      code: "custom",
+      message:
+        "Live mailing mode is disabled. Set CAMPAIGN_LIVE_MAIL_ENABLED=true and POSTGRID_MODE=live.",
+      path: ["mailingMode"],
+    });
+  }
+}
+
 export const campaignOccasionConfigSchema = z
   .object({
     occasionId: z.string().uuid().optional(),
@@ -257,13 +275,7 @@ export const campaignCreateSchema = z
         path: ["endDate"],
       });
     }
-    if (value.mailingMode === "live") {
-      ctx.addIssue({
-        code: "custom",
-        message: "Live mailing mode is disabled",
-        path: ["mailingMode"],
-      });
-    }
+    rejectLiveUnlessEnabled(value.mailingMode, ctx);
   });
 
 export const campaignUpdateSchema = z
@@ -287,13 +299,7 @@ export const campaignUpdateSchema = z
         path: ["endDate"],
       });
     }
-    if (value.mailingMode === "live") {
-      ctx.addIssue({
-        code: "custom",
-        message: "Live mailing mode is disabled",
-        path: ["mailingMode"],
-      });
-    }
+    rejectLiveUnlessEnabled(value.mailingMode, ctx);
   });
 
 export const campaignExtendSchema = z.object({

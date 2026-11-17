@@ -14,8 +14,13 @@ import { recordUsageEvent, refreshCampaignUsageProfile } from "@/lib/campaigns/u
 import { materializeGreetingCard } from "@/lib/cards/materialize";
 import { generateCardArtwork } from "@/lib/cards/generate-artwork";
 import { submitCardMail } from "@/lib/cards/submit-mail";
-import type { CampaignMailing } from "@/lib/types/campaigns";
+import type { CampaignMailing, CampaignMailingMode } from "@/lib/types/campaigns";
 import type { DesignConfig, GreetingCardFieldValues } from "@/lib/types/cards";
+
+function asMailingMode(mode: string | null | undefined): CampaignMailingMode {
+  if (mode === "live" || mode === "dry_run") return mode;
+  return "test";
+}
 
 export type ExecutorRunResult = {
   claimed: number;
@@ -57,6 +62,7 @@ async function skipMailing(
     | "skipped_cancelled"
     | "skipped_past",
   reason: string,
+  mailingMode: CampaignMailingMode = "test",
   actorUserId?: string | null
 ) {
   await setMailingStatus(mailing.id, {
@@ -81,7 +87,7 @@ async function skipMailing(
     mailingId: mailing.id,
     eventType: "mailing_skipped",
     billingMode: "waived",
-    mailingMode: "test",
+    mailingMode,
     idempotencyKey: `skip:${mailing.id}:${status}`,
     payload: { reason, status },
   });
@@ -90,7 +96,8 @@ async function skipMailing(
 async function failOrRetry(
   mailing: CampaignMailing,
   message: string,
-  recoverable: boolean
+  recoverable: boolean,
+  mailingMode: CampaignMailingMode = "test"
 ) {
   const admin = createAdminClient();
   const nextRetry = mailing.retry_count + 1;
@@ -135,7 +142,7 @@ async function failOrRetry(
     mailingId: mailing.id,
     eventType: "mailing_failed",
     billingMode: "waived",
-    mailingMode: "test",
+    mailingMode,
     idempotencyKey: `fail:${mailing.id}:${nextRetry}`,
     payload: { message },
   });
@@ -158,7 +165,18 @@ export async function processClaimedMailing(
 
     if (!mailing) return "failed";
 
-    if (preflight.code === "campaign_not_active" && preflight.recoverable) {
+    const { data: campaignRow } = await admin
+      .from("campaigns")
+      .select("mailing_mode")
+      .eq("id", mailing.campaign_id)
+      .maybeSingle();
+    const mode = asMailingMode(campaignRow?.mailing_mode);
+
+    if (
+      (preflight.code === "campaign_not_active" ||
+        preflight.code === "mode_not_allowed") &&
+      preflight.recoverable
+    ) {
       await releaseToPlanned(mailingId, preflight.message);
       return "requeued";
     }
@@ -167,7 +185,8 @@ export async function processClaimedMailing(
       await skipMailing(
         mailing as CampaignMailing,
         preflight.skipStatus,
-        preflight.message
+        preflight.message,
+        mode
       );
       return "skipped";
     }
@@ -180,11 +199,13 @@ export async function processClaimedMailing(
     return failOrRetry(
       mailing as CampaignMailing,
       preflight.message,
-      preflight.recoverable
+      preflight.recoverable,
+      mode
     );
   }
 
   const { mailing, context } = preflight;
+  const mailingMode = asMailingMode(context.campaign.mailing_mode);
 
   try {
     await setMailingStatus(mailing.id, {
@@ -316,33 +337,42 @@ export async function processClaimedMailing(
       mailingId: mailing.id,
       eventType: "artwork_generated",
       billingMode: "waived",
-      mailingMode: "test",
+      mailingMode,
       idempotencyKey: `artwork:${mailing.id}:${artwork.card.id}`,
       payload: { greetingCardId: artwork.card.id },
     });
 
     const again = await preflightCampaignMailing(mailing.id);
     if (!again.ok) {
-      if (again.recoverable && again.code === "campaign_not_active") {
+      if (
+        again.recoverable &&
+        (again.code === "campaign_not_active" ||
+          again.code === "mode_not_allowed")
+      ) {
         await releaseToPlanned(mailing.id, again.message);
         return "requeued";
       }
       if (again.skipStatus) {
-        await skipMailing(mailing, again.skipStatus, again.message);
+        await skipMailing(mailing, again.skipStatus, again.message, mailingMode);
         return "skipped";
       }
-      return failOrRetry(mailing, again.message, again.recoverable);
+      return failOrRetry(mailing, again.message, again.recoverable, mailingMode);
     }
 
     const authz = await authorizeCampaignMailingSpend({
       organizationId: mailing.organization_id,
       campaignId: mailing.campaign_id,
       mailingId: mailing.id,
-      mailingMode: "test",
+      mailingMode,
     });
 
     if (!authz.allowed) {
-      return failOrRetry(mailing, authz.message, authz.reason === "insufficient_budget");
+      return failOrRetry(
+        mailing,
+        authz.message,
+        authz.reason === "insufficient_budget",
+        mailingMode
+      );
     }
 
     await setMailingStatus(mailing.id, { status: "submitting" });
@@ -350,9 +380,9 @@ export async function processClaimedMailing(
     const send = await submitCardMail({
       cardId: artwork.card.id,
       organizationId: mailing.organization_id,
-      campaignMailingMode: "test",
+      campaignMailingMode: mailingMode,
       orgName: context.organization.name,
-      testLabel: true,
+      testLabel: mailingMode !== "live",
     });
 
     await setMailingStatus(mailing.id, {
@@ -370,12 +400,15 @@ export async function processClaimedMailing(
       organizationId: mailing.organization_id,
       campaignId: mailing.campaign_id,
       mailingId: mailing.id,
-      eventType: "mailing_test_submitted",
+      eventType:
+        mailingMode === "live"
+          ? "mailing_live_submitted"
+          : "mailing_test_submitted",
       amountCents: authz.amountCents,
       currency: authz.currency,
       billingMode: authz.billingMode,
-      mailingMode: "test",
-      idempotencyKey: `submit:test:${mailing.id}:${send.providerMailId}`,
+      mailingMode,
+      idempotencyKey: `submit:${mailingMode}:${mailing.id}:${send.providerMailId}`,
       payload: {
         provider: send.provider,
         simulated: send.simulated,
@@ -395,6 +428,7 @@ export async function processClaimedMailing(
         providerMailId: send.providerMailId,
         environment: send.environment,
         simulated: send.simulated,
+        mailingMode,
         greetingCardId: send.card.id,
         amountCents: authz.amountCents,
       },
@@ -409,7 +443,7 @@ export async function processClaimedMailing(
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Mailing processing failed";
-    return failOrRetry(mailing, message, true);
+    return failOrRetry(mailing, message, true, mailingMode);
   }
 }
 
@@ -419,7 +453,7 @@ export async function refreshActiveCampaignSchedules(limit = 25): Promise<number
     .from("campaigns")
     .select("id, organization_id, created_by, configuration, timezone")
     .eq("status", "active")
-    .eq("mailing_mode", "test")
+    .in("mailing_mode", ["test", "live"])
     .order("updated_at", { ascending: true })
     .limit(limit);
 

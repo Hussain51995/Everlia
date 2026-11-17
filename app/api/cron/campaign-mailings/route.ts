@@ -1,5 +1,6 @@
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { runCampaignMailingWorker } from "@/lib/campaigns/mailing-executor";
+import { isCampaignLiveMailEnabled } from "@/lib/mail/mode-guard";
 
 
 export async function POST(request: Request) {
@@ -38,10 +39,14 @@ export async function POST(request: Request) {
       refreshSchedules: refresh,
     });
 
+    const liveMailEnabled = isCampaignLiveMailEnabled();
+
     return apiSuccess({
       ...result,
-      liveMailEnabled: false,
-      note: "Phase 6 worker submits test-mode mailings only. Live physical mailing remains disabled.",
+      liveMailEnabled,
+      note: liveMailEnabled
+        ? "Worker submits due mailings for active test and live campaigns."
+        : "Worker submits test-mode mailings only. Enable CAMPAIGN_LIVE_MAIL_ENABLED=true and POSTGRID_MODE=live for live postage.",
     });
   } catch (error) {
     console.error("[cron/campaign-mailings]", error);

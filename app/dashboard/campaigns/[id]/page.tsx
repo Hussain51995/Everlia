@@ -785,6 +785,11 @@ function MailingsTable({
                       {row.skip_reason}
                     </p>
                   ) : null}
+                  {!row.skip_reason && row.error_message ? (
+                    <p className="mt-0.5 text-[10px] text-[#B45309]">
+                      {row.error_message}
+                    </p>
+                  ) : null}
                 </td>
                 <td className="py-2">
                   <div className="flex flex-wrap gap-2">
