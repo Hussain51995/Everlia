@@ -5,6 +5,7 @@ import type {
 import {
   parseMessageOverride,
   resolveOccasionCopy,
+  type OccasionMessageDefinition,
   type OccasionMessageOverride,
 } from "@/lib/campaigns/messages";
 import {
@@ -42,6 +43,7 @@ export type PersonalizeCampaignCardInput = {
   occasionSlug?: string | null;
   occasionName?: string | null;
   messageTemplateOverride?: string | OccasionMessageOverride | null;
+  orgMessageDefinition?: OccasionMessageDefinition | null;
   customer: CampaignPersonalizeCustomer;
   sender?: CampaignPersonalizeSender | null;
   milestone?: CampaignPersonalizeMilestone | null;
@@ -106,6 +108,7 @@ export function personalizeCampaignCard(
   const copy = resolveOccasionCopy({
     occasionSlug: input.occasionSlug,
     override: toOverride(input.messageTemplateOverride),
+    orgDefinition: input.orgMessageDefinition,
     context,
   });
 

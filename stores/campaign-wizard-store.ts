@@ -28,7 +28,9 @@ export type CampaignWizardState = {
   startDate: string;
   endDate: string;
   timezone: string;
+  mailingMode: "test" | "live";
   occasions: WizardOccasionDraft[];
+  optedOutOccasionSlugs: string[];
   includeCompanyLogo: boolean;
   draftCampaignId: string | null;
   setStep: (step: WizardStep) => void;
@@ -41,10 +43,13 @@ export type CampaignWizardState = {
   setStartDate: (date: string) => void;
   setEndDate: (date: string) => void;
   setTimezone: (tz: string) => void;
+  setMailingMode: (mode: "test" | "live") => void;
   setOccasions: (occasions: WizardOccasionDraft[]) => void;
   updateOccasion: (key: string, patch: Partial<WizardOccasionDraft>) => void;
   removeOccasion: (key: string) => void;
   addOccasion: (occasion: WizardOccasionDraft) => void;
+  optOutOccasionSlug: (slug: string) => void;
+  clearOptedOutOccasionSlug: (slug: string) => void;
   setDraftCampaignId: (id: string | null) => void;
   reset: () => void;
 };
@@ -68,7 +73,9 @@ const defaults = () => {
     startDate: dates.startDate,
     endDate: dates.endDate,
     timezone: "America/New_York",
+    mailingMode: "test" as const,
     occasions: [] as WizardOccasionDraft[],
+    optedOutOccasionSlugs: [] as string[],
     includeCompanyLogo: false,
     draftCampaignId: null as string | null,
   };
@@ -96,6 +103,7 @@ export const useCampaignWizardStore = create<CampaignWizardState>()(
       setStartDate: (startDate) => set({ startDate }),
       setEndDate: (endDate) => set({ endDate }),
       setTimezone: (timezone) => set({ timezone }),
+      setMailingMode: (mailingMode) => set({ mailingMode }),
       setOccasions: (occasions) => set({ occasions }),
       updateOccasion: (key, patch) =>
         set({
@@ -107,6 +115,17 @@ export const useCampaignWizardStore = create<CampaignWizardState>()(
         set({ occasions: get().occasions.filter((o) => o.key !== key) }),
       addOccasion: (occasion) =>
         set({ occasions: [...get().occasions, occasion] }),
+      optOutOccasionSlug: (slug) => {
+        const current = get().optedOutOccasionSlugs;
+        if (current.includes(slug)) return;
+        set({ optedOutOccasionSlugs: [...current, slug] });
+      },
+      clearOptedOutOccasionSlug: (slug) =>
+        set({
+          optedOutOccasionSlugs: get().optedOutOccasionSlugs.filter(
+            (s) => s !== slug
+          ),
+        }),
       setDraftCampaignId: (draftCampaignId) => set({ draftCampaignId }),
       reset: () => set(defaults()),
     }),
@@ -121,7 +140,9 @@ export const useCampaignWizardStore = create<CampaignWizardState>()(
         startDate: state.startDate,
         endDate: state.endDate,
         timezone: state.timezone,
+        mailingMode: state.mailingMode,
         occasions: state.occasions,
+        optedOutOccasionSlugs: state.optedOutOccasionSlugs,
         includeCompanyLogo: state.includeCompanyLogo,
         draftCampaignId: state.draftCampaignId,
       }),

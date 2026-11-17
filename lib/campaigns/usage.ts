@@ -87,6 +87,7 @@ export async function refreshCampaignUsageProfile(params: {
   const [
     { count: enrolled },
     { data: mailings },
+    { data: campaign },
   ] = await Promise.all([
     admin
       .from("campaign_customers")
@@ -97,21 +98,28 @@ export async function refreshCampaignUsageProfile(params: {
       .from("campaign_mailings")
       .select("status, greeting_card_id")
       .eq("campaign_id", params.campaignId),
+    admin
+      .from("campaigns")
+      .select("mailing_mode")
+      .eq("id", params.campaignId)
+      .maybeSingle(),
   ]);
 
   const rows = mailings ?? [];
+  const submitted = rows.filter((m) => m.status === "submitted").length;
+  const campaignMode = campaign?.mailing_mode === "live" ? "live" : "test";
   const snapshot: CampaignUsageSnapshot = {
     enrolledCustomers: enrolled ?? 0,
     cardsScheduled: rows.length,
     artworksGenerated: rows.filter((m) => m.greeting_card_id).length,
-    testMailings: rows.filter((m) => m.status === "submitted").length,
-    liveMailings: 0,
+    testMailings: campaignMode === "test" ? submitted : 0,
+    liveMailings: campaignMode === "live" ? submitted : 0,
     failedMailings: rows.filter((m) => m.status === "failed").length,
     skippedMailings: rows.filter((m) =>
       String(m.status).startsWith("skipped_")
     ).length,
     plannedMailings: rows.filter((m) => m.status === "planned").length,
-    submittedMailings: rows.filter((m) => m.status === "submitted").length,
+    submittedMailings: submitted,
   };
 
   const quote =
@@ -121,7 +129,7 @@ export async function refreshCampaignUsageProfile(params: {
       campaignId: params.campaignId,
       estimatedCardCount: snapshot.plannedMailings + snapshot.submittedMailings,
       enrolledCustomerCount: snapshot.enrolledCustomers,
-      mailingMode: "test",
+      mailingMode: campaignMode,
     }));
 
   const { error } = await admin.from("campaign_billing_profiles").upsert(

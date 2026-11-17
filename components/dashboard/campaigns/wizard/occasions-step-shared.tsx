@@ -84,6 +84,7 @@ export type TileModel = {
   occurrenceDate?: string;
   draft: WizardOccasionDraft | null;
   catalog: OccasionDefinition | null;
+  defaultMessagePreview?: string;
 };
 
 export function categoryLabel(category?: string) {
@@ -103,6 +104,14 @@ export function occasionIcon(tile: {
   if (slug === "birthday") return GiftIcon;
   if (slug === "home-anniversary") return HomeIcon;
   if (slug === "closing-anniversary") return BuildingIcon;
+  if (
+    slug === "referral-january" ||
+    slug === "referral-april" ||
+    slug === "referral-july" ||
+    slug === "referral-october"
+  ) {
+    return UserIcon;
+  }
   if (tile.category === "federal_holiday") return CalendarIcon;
   if (tile.category === "popular_greeting") return SparklesIcon;
   if (tile.category === "personal_milestone") return UserIcon;
@@ -119,6 +128,9 @@ export function truncate(text: string, max = 42) {
 export function messagePreview(tile: TileModel) {
   const custom = tile.draft?.messageTemplate?.trim();
   if (custom) return truncate(custom);
+  if (tile.defaultMessagePreview?.trim()) {
+    return truncate(tile.defaultMessagePreview.trim());
+  }
   return truncate(`Send a personalized ${tile.name.toLowerCase()} greeting to…`);
 }
 

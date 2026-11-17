@@ -41,7 +41,7 @@ const TITLES: Record<number, { title: string; subtitle: string }> = {
   },
   6: {
     title: "Activate",
-    subtitle: "Start the scheduling lifecycle in free test mode.",
+    subtitle: "Start the scheduling lifecycle (test or live when enabled).",
   },
 };
 
@@ -60,6 +60,7 @@ export function CampaignWizard() {
   const startDate = useCampaignWizardStore((s) => s.startDate);
   const endDate = useCampaignWizardStore((s) => s.endDate);
   const timezone = useCampaignWizardStore((s) => s.timezone);
+  const mailingMode = useCampaignWizardStore((s) => s.mailingMode);
   const occasions = useCampaignWizardStore((s) => s.occasions);
   const includeCompanyLogo = useCampaignWizardStore((s) => s.includeCompanyLogo);
   const reset = useCampaignWizardStore((s) => s.reset);
@@ -129,7 +130,7 @@ export function CampaignWizard() {
         startDate,
         endDate,
         timezone,
-        mailingMode: "test",
+        mailingMode,
         customerIds,
         occasions: enabled.map((o) => ({
           occasionId: o.occasionId,
@@ -152,7 +153,9 @@ export function CampaignWizard() {
         tone: "success",
         title: activate ? "Campaign activated" : "Draft saved",
         description: activate
-          ? "Scheduling is live in test mode. No physical mail was sent."
+          ? mailingMode === "live"
+            ? "Scheduling is active in live mode. Due mailings may incur real PostGrid postage."
+            : "Scheduling is active in test mode. No physical mail was sent."
           : undefined,
       });
       router.push(`/dashboard/campaigns/${result.campaign.id}`);

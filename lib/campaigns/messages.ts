@@ -5,6 +5,10 @@ import {
   type PlaceholderContext,
 } from "@/lib/campaigns/placeholders";
 
+export const CARD_GREETING_MAX = 80;
+export const CARD_MESSAGE_MAX = 280;
+export const CARD_FOOTER_MAX = 90;
+
 export type OccasionMessageDefinition = {
   slug: string;
   greetingTemplate: string;
@@ -47,7 +51,7 @@ export function parseMessageOverride(
     } catch {
     }
   }
-  return { greetingTemplate: trimmed };
+  return { messageTemplate: trimmed };
 }
 
 
@@ -149,6 +153,38 @@ export const DEFAULT_OCCASION_MESSAGES: Record<string, OccasionMessageDefinition
       footerTemplate: "CELEBRATING LOVE, ONE HOME AT A TIME.",
     },
 
+    "referral-january": {
+      slug: "referral-january",
+      greetingTemplate: "Thinking of You This New Year!",
+      messageTemplate:
+        "As we kick off another year, we're grateful for the trust you've placed in us. If you know someone who's thinking about buying or selling a home, we'd be honored if you'd share our name. Your referrals mean the world to us.",
+      footerTemplate: "THANK YOU FOR TRUSTING US WITH YOUR HOME JOURNEY.",
+    },
+
+    "referral-april": {
+      slug: "referral-april",
+      greetingTemplate: "A Note of Appreciation!",
+      messageTemplate:
+        "Spring is a wonderful time for fresh starts and new beginnings. If friends or family are considering a move, we'd love an introduction. Nothing means more to our business than a referral from someone we already care about.",
+      footerTemplate: "GRATEFUL FOR YOUR TRUST AND KIND WORDS.",
+    },
+
+    "referral-july": {
+      slug: "referral-july",
+      greetingTemplate: "Hoping Your Summer Is Going Well!",
+      messageTemplate:
+        "Midyear is a great moment to check in and say thank you. If anyone in your circle is exploring a new home or ready to sell, we'd be grateful for a referral. We're always here to help the people you care about.",
+      footerTemplate: "YOUR REFERRALS HELP US SERVE MORE FAMILIES.",
+    },
+
+    "referral-october": {
+      slug: "referral-october",
+      greetingTemplate: "Grateful for You This Season!",
+      messageTemplate:
+        "As the year winds down, we're reflecting on the relationships that matter most. If you know someone who could use help with a home decision, we'd appreciate a referral. Thank you for being part of our community.",
+      footerTemplate: "THANK YOU FOR BEING PART OF OUR STORY.",
+    },
+
     custom: {
       slug: "custom",
       greetingTemplate: "Just a Little Note of Appreciation",
@@ -176,9 +212,25 @@ export function getOccasionMessageDefinition(
 
 export function mergeOccasionMessageDefinition(
   slug: string | null | undefined,
-  override?: OccasionMessageOverride | null
+  override?: OccasionMessageOverride | null,
+  /** Org library definition applied before campaign custom override. */
+  orgDefinition?: OccasionMessageDefinition | null
 ): OccasionMessageDefinition {
-  const base = getOccasionMessageDefinition(slug);
+  const codeBase = getOccasionMessageDefinition(slug);
+  const base: OccasionMessageDefinition = orgDefinition
+    ? {
+        slug: codeBase.slug,
+        greetingTemplate:
+          orgDefinition.greetingTemplate || codeBase.greetingTemplate,
+        messageTemplate:
+          orgDefinition.messageTemplate || codeBase.messageTemplate,
+        footerTemplate:
+          orgDefinition.footerTemplate !== undefined
+            ? orgDefinition.footerTemplate
+            : codeBase.footerTemplate,
+      }
+    : codeBase;
+
   if (!override) return base;
   return {
     slug: base.slug,
@@ -201,11 +253,13 @@ export type ResolvedOccasionCopy = {
 export function resolveOccasionCopy(options: {
   occasionSlug?: string | null;
   override?: OccasionMessageOverride | null;
+  orgDefinition?: OccasionMessageDefinition | null;
   context: PlaceholderContext;
 }): ResolvedOccasionCopy {
   const definition = mergeOccasionMessageDefinition(
     options.occasionSlug,
-    options.override
+    options.override,
+    options.orgDefinition
   );
 
   for (const template of [
@@ -224,14 +278,14 @@ export function resolveOccasionCopy(options: {
 
   return {
     greeting: resolveMessageTemplate(definition.greetingTemplate, options.context, {
-      maxLength: 80,
+      maxLength: CARD_GREETING_MAX,
     }),
     message: resolveMessageTemplate(definition.messageTemplate, options.context, {
-      maxLength: 280,
+      maxLength: CARD_MESSAGE_MAX,
     }),
     footer: definition.footerTemplate
       ? resolveMessageTemplate(definition.footerTemplate, options.context, {
-          maxLength: 90,
+          maxLength: CARD_FOOTER_MAX,
         })
       : "",
     definition,

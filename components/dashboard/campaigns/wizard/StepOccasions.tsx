@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useOccasions } from "@/hooks/campaigns";
 import { useCustomers } from "@/hooks/cards";
+import { useOrgOccasionMessages } from "@/hooks/campaigns";
 import {
   useCampaignWizardStore,
   type WizardOccasionDraft,
@@ -29,18 +30,48 @@ import {
   occasionIcon,
   type TileModel,
 } from "@/components/dashboard/campaigns/wizard/occasions-step-shared";
-import type { OccasionDefinition } from "@/lib/campaigns/occasions";
+import {
+  US_OCCASION_CATALOG,
+  type OccasionDefinition,
+} from "@/lib/campaigns/occasions";
 
 type ViewMode = "list" | "calendar";
+
+function draftFromCatalog(o: OccasionDefinition): WizardOccasionDraft {
+  return {
+    key: o.slug,
+    occasionId: o.id,
+    occasionSlug: o.slug,
+    name: o.name,
+    category: o.category,
+    leadDays: o.defaultLeadDays ?? 7,
+    isEnabled: true,
+    excludedCustomerIds: [],
+  };
+}
+
+const CODE_DEFAULT_SLUGS = new Set(
+  US_OCCASION_CATALOG.filter(
+    (o) => o.isDefaultSelected && o.isActive !== false
+  ).map((o) => o.slug)
+);
 
 export function StepOccasions() {
   const { data: catalog, isLoading } = useOccasions();
   const { data: customers } = useCustomers();
+  const { data: orgMessagesData } = useOrgOccasionMessages();
   const occasions = useCampaignWizardStore((s) => s.occasions);
   const setOccasions = useCampaignWizardStore((s) => s.setOccasions);
   const updateOccasion = useCampaignWizardStore((s) => s.updateOccasion);
   const removeOccasion = useCampaignWizardStore((s) => s.removeOccasion);
   const addOccasion = useCampaignWizardStore((s) => s.addOccasion);
+  const optedOutOccasionSlugs = useCampaignWizardStore(
+    (s) => s.optedOutOccasionSlugs
+  );
+  const optOutOccasionSlug = useCampaignWizardStore((s) => s.optOutOccasionSlug);
+  const clearOptedOutOccasionSlug = useCampaignWizardStore(
+    (s) => s.clearOptedOutOccasionSlug
+  );
   const customerIds = useCampaignWizardStore((s) => s.customerIds);
   const startDate = useCampaignWizardStore((s) => s.startDate);
   const endDate = useCampaignWizardStore((s) => s.endDate);
@@ -53,21 +84,25 @@ export function StepOccasions() {
   const [previewKey, setPreviewKey] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!catalog?.length || occasions.length > 0) return;
-    const defaults: WizardOccasionDraft[] = catalog
-      .filter((o) => o.isDefaultSelected)
-      .map((o) => ({
-        key: o.slug,
-        occasionId: o.id,
-        occasionSlug: o.slug,
-        name: o.name,
-        category: o.category,
-        leadDays: o.defaultLeadDays ?? 7,
-        isEnabled: true,
-        excludedCustomerIds: [],
-      }));
-    setOccasions(defaults);
-  }, [catalog, occasions.length, setOccasions]);
+    if (!catalog?.length) return;
+
+    const selectedSlugs = new Set(
+      occasions
+        .map((o) => o.occasionSlug)
+        .filter((slug): slug is string => Boolean(slug))
+    );
+    const optedOut = new Set(optedOutOccasionSlugs);
+
+    const missingDefaults = catalog.filter(
+      (o) =>
+        CODE_DEFAULT_SLUGS.has(o.slug) &&
+        !selectedSlugs.has(o.slug) &&
+        !optedOut.has(o.slug)
+    );
+
+    if (!missingDefaults.length) return;
+    setOccasions([...occasions, ...missingDefaults.map(draftFromCatalog)]);
+  }, [catalog, occasions, optedOutOccasionSlugs, setOccasions]);
 
   const selectedCustomers = useMemo(() => {
     const set = new Set(customerIds);
@@ -80,27 +115,38 @@ export function StepOccasions() {
       }));
   }, [customers, customerIds]);
 
+  const defaultMessageBySlug = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const row of orgMessagesData?.messages ?? []) {
+      map.set(row.occasionSlug, row.messageTemplate);
+    }
+    return map;
+  }, [orgMessagesData?.messages]);
+
   const tiles: TileModel[] = useMemo(() => {
     const bySlug = new Map(
       occasions
         .filter((o) => o.occasionSlug)
         .map((o) => [o.occasionSlug as string, o])
     );
-    const catalogTiles: TileModel[] = (catalog ?? []).map((o) => {
-      const draft = bySlug.get(o.slug) ?? null;
-      return {
-        key: o.slug,
-        name: o.name,
-        category: o.category,
-        leadDays: draft?.leadDays ?? o.defaultLeadDays ?? 7,
-        isSelected: Boolean(draft),
-        isEnabled: draft?.isEnabled ?? false,
-        hasMessage: Boolean(draft?.messageTemplate?.trim()),
-        exclusionCount: draft?.excludedCustomerIds.length ?? 0,
-        draft,
-        catalog: o,
-      };
-    });
+    const catalogTiles: TileModel[] = [...(catalog ?? [])]
+      .sort((a, b) => (a.sortOrder ?? 100) - (b.sortOrder ?? 100))
+      .map((o) => {
+        const draft = bySlug.get(o.slug) ?? null;
+        return {
+          key: o.slug,
+          name: o.name,
+          category: o.category,
+          leadDays: draft?.leadDays ?? o.defaultLeadDays ?? 7,
+          isSelected: Boolean(draft),
+          isEnabled: draft?.isEnabled ?? false,
+          hasMessage: Boolean(draft?.messageTemplate?.trim()),
+          exclusionCount: draft?.excludedCustomerIds.length ?? 0,
+          draft,
+          catalog: o,
+          defaultMessagePreview: defaultMessageBySlug.get(o.slug),
+        };
+      });
 
     const customTiles: TileModel[] = occasions
       .filter((o) => !o.occasionSlug)
@@ -116,10 +162,11 @@ export function StepOccasions() {
         occurrenceDate: o.occurrenceDate,
         draft: o,
         catalog: null,
+        defaultMessagePreview: defaultMessageBySlug.get("custom"),
       }));
 
     return [...catalogTiles, ...customTiles];
-  }, [catalog, occasions]);
+  }, [catalog, occasions, defaultMessageBySlug]);
 
   const visibleTiles = useMemo(() => {
     if (!categoryFilter) return tiles;
@@ -159,6 +206,7 @@ export function StepOccasions() {
 
   const selectAllVisible = () => {
     const visibleSlugs = new Set(visibleCatalog.map((o) => o.slug));
+    for (const slug of visibleSlugs) clearOptedOutOccasionSlug(slug);
     const kept = occasions.filter(
       (o) => !o.occasionSlug || !visibleSlugs.has(o.occasionSlug)
     );
@@ -167,22 +215,14 @@ export function StepOccasions() {
       if (existing) {
         return { ...existing, isEnabled: true };
       }
-      return {
-        key: o.slug,
-        occasionId: o.id,
-        occasionSlug: o.slug,
-        name: o.name,
-        category: o.category,
-        leadDays: o.defaultLeadDays ?? 7,
-        isEnabled: true,
-        excludedCustomerIds: [],
-      };
+      return draftFromCatalog(o);
     });
     setOccasions([...kept, ...selectedVisible]);
   };
 
   const clearVisibleSelection = () => {
     const visibleSlugs = new Set(visibleCatalog.map((o) => o.slug));
+    for (const slug of visibleSlugs) optOutOccasionSlug(slug);
     setOccasions(
       occasions.filter(
         (o) => !o.occasionSlug || !visibleSlugs.has(o.occasionSlug)
@@ -194,16 +234,8 @@ export function StepOccasions() {
     if (tile.draft) return tile.draft;
     if (!tile.catalog) return null;
     const o = tile.catalog;
-    const draft: WizardOccasionDraft = {
-      key: o.slug,
-      occasionId: o.id,
-      occasionSlug: o.slug,
-      name: o.name,
-      category: o.category,
-      leadDays: o.defaultLeadDays ?? 7,
-      isEnabled: true,
-      excludedCustomerIds: [],
-    };
+    if (o.slug) clearOptedOutOccasionSlug(o.slug);
+    const draft = draftFromCatalog(o);
     addOccasion(draft);
     return draft;
   };
@@ -211,8 +243,14 @@ export function StepOccasions() {
   const toggleSelection = (tile: TileModel) => {
     if (tile.draft) {
       if (!tile.draft.isEnabled) {
+        if (tile.draft.occasionSlug) {
+          clearOptedOutOccasionSlug(tile.draft.occasionSlug);
+        }
         updateOccasion(tile.draft.key, { isEnabled: true });
         return;
+      }
+      if (tile.draft.occasionSlug) {
+        optOutOccasionSlug(tile.draft.occasionSlug);
       }
       removeOccasion(tile.draft.key);
       return;
@@ -498,6 +536,11 @@ export function StepOccasions() {
         open={Boolean(editingKey && editingOccasion)}
         occasion={editingOccasion}
         customers={selectedCustomers}
+        defaultMessagePreview={
+          editingOccasion?.occasionSlug
+            ? defaultMessageBySlug.get(editingOccasion.occasionSlug)
+            : defaultMessageBySlug.get("custom")
+        }
         onClose={() => setEditingKey(null)}
         onSave={(key, patch) => updateOccasion(key, patch)}
         onRemove={(key) => removeOccasion(key)}

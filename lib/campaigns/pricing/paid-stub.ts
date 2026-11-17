@@ -1,3 +1,4 @@
+import { isCampaignLiveMailEnabled } from "@/lib/mail/mode-guard";
 import type {
   AuthorizeMailingInput,
   AuthorizeMailingResult,
@@ -58,10 +59,20 @@ export class PaidPricingStubService implements PricingService {
     input: AuthorizeMailingInput
   ): Promise<AuthorizeMailingResult> {
     if (input.mailingMode === "live") {
+      if (!isCampaignLiveMailEnabled()) {
+        return {
+          allowed: false,
+          reason: "live_disabled",
+          message: "Paid live mailing is not enabled in this phase",
+        };
+      }
       return {
-        allowed: false,
-        reason: "live_disabled",
-        message: "Paid live mailing is not enabled in this phase",
+        allowed: true,
+        authorizationId: `live-waived:${input.mailingId}`,
+        amountCents: 0,
+        currency: (input.currency ?? "USD").toUpperCase(),
+        billingMode: "waived",
+        duplicatePrevented: false,
       };
     }
 

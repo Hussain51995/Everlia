@@ -262,6 +262,107 @@ describe("Phase 4 schedule preview", () => {
     expect(
       defaults.find((d) => d.slug === "us-valentines-day")
     ).toBeUndefined();
+    expect(defaults.some((d) => d.slug === "referral-january")).toBe(true);
+    expect(defaults.some((d) => d.slug === "referral-april")).toBe(true);
+    expect(defaults.some((d) => d.slug === "referral-july")).toBe(true);
+    expect(defaults.some((d) => d.slug === "referral-october")).toBe(true);
+  });
+
+  it("UNIT_PASS: referral cards sort into calendar order in the list", () => {
+    const bySlug = Object.fromEntries(
+      US_OCCASION_CATALOG.map((o) => [o.slug, o.sortOrder ?? 0])
+    );
+    expect(bySlug["referral-january"]).toBeGreaterThan(bySlug["us-new-years-day"]);
+    expect(bySlug["referral-january"]).toBeLessThan(bySlug["us-valentines-day"]);
+    expect(bySlug["referral-april"]).toBeGreaterThan(bySlug["us-st-patricks-day"]);
+    expect(bySlug["referral-april"]).toBeLessThan(bySlug["us-independence-day"]);
+    expect(bySlug["referral-july"]).toBeLessThan(bySlug["us-independence-day"]);
+    expect(bySlug["referral-october"]).toBeLessThan(bySlug["us-halloween"]);
+  });
+
+  it("UNIT_PASS: quarterly referral cards resolve on quarter-start dates", () => {
+    const referralSlugs = [
+      "referral-january",
+      "referral-april",
+      "referral-july",
+      "referral-october",
+    ] as const;
+    const expectedDates = [
+      "2025-01-01",
+      "2025-04-01",
+      "2025-07-01",
+      "2025-10-01",
+    ];
+
+    for (let i = 0; i < referralSlugs.length; i++) {
+      const occasion = getOccasionBySlug(referralSlugs[i])!;
+      expect(occasion).toBeDefined();
+      expect(occasion.isDefaultSelected).toBe(true);
+
+      const result = resolveOccasionOccurrences({
+        occasion,
+        customerId: "c1",
+        milestones: [],
+        startDate: "2025-01-01",
+        endDate: "2025-12-31",
+        timezone: "America/New_York",
+      });
+
+      expect(result.occurrences.map((o) => o.occasionDate)).toEqual([
+        expectedDates[i],
+      ]);
+      expect(result.occurrences[0]?.sendOn).toBe(
+        [
+          "2024-12-25",
+          "2025-03-25",
+          "2025-06-24",
+          "2025-09-24",
+        ][i]
+      );
+      expect(result.skipped).toHaveLength(0);
+    }
+  });
+
+  it("UNIT_PASS: selecting all four referral cards yields four sends per year", () => {
+    const preview = previewCampaignSchedule({
+      startDate: "2025-01-01",
+      endDate: "2025-12-31",
+      timezone: "America/New_York",
+      customers: [
+        {
+          id: "c1",
+          firstName: "Alex",
+          lastName: "Rivera",
+          milestones: [],
+        },
+        {
+          id: "c2",
+          firstName: "Jordan",
+          lastName: "Lee",
+          milestones: [],
+        },
+      ],
+      occasions: [
+        getOccasionBySlug("referral-january")!,
+        getOccasionBySlug("referral-april")!,
+        getOccasionBySlug("referral-july")!,
+        getOccasionBySlug("referral-october")!,
+      ],
+    });
+
+    expect(preview.expectedCardCount).toBe(8);
+    expect(
+      preview.upcomingOccasions.map((o) => o.occasionDate).sort()
+    ).toEqual([
+      "2025-01-01",
+      "2025-01-01",
+      "2025-04-01",
+      "2025-04-01",
+      "2025-07-01",
+      "2025-07-01",
+      "2025-10-01",
+      "2025-10-01",
+    ]);
   });
 });
 
@@ -276,6 +377,18 @@ describe("Phase 4 deliverables / no-send contracts", () => {
     expect(sql).toContain("us-independence-day-observed");
     expect(sql).toContain("personal_milestone");
     expect(sql).toContain("real_estate_milestone");
+  });
+
+  it("CODE_REVIEW_PASS: migration 031 seeds quarterly referral occasions", () => {
+    const names = readdirSync(resolve(process.cwd(), "supabase/migrations"));
+    expect(names.some((f) => f.startsWith("031_"))).toBe(true);
+    const sql = readRepo("supabase/migrations/031_seed_referral_occasions.sql");
+    expect(sql).toMatch(/Does not delete custom occasions/i);
+    expect(sql).toContain("referral-january");
+    expect(sql).toContain("referral-april");
+    expect(sql).toContain("referral-july");
+    expect(sql).toContain("referral-october");
+    expect(sql).toContain("popular_greeting");
   });
 
   it("CODE_REVIEW_PASS: schedule preview does not mail", () => {

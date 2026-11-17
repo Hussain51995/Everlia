@@ -2,9 +2,9 @@ import { z } from "zod";
 import { validateMessageTemplate } from "@/lib/campaigns/placeholders";
 
 const messageOverrideObjectSchema = z.object({
-  greetingTemplate: z.string().trim().min(1).max(200).optional(),
-  messageTemplate: z.string().trim().min(1).max(600).optional(),
-  footerTemplate: z.string().trim().max(160).nullable().optional(),
+  greetingTemplate: z.string().trim().min(1).max(80).optional(),
+  messageTemplate: z.string().trim().min(1).max(280).optional(),
+  footerTemplate: z.string().trim().max(90).nullable().optional(),
 });
 
 function assertPlaceholders(template: string, label: string) {
@@ -30,7 +30,7 @@ export const campaignPreviewSchema = z
     occasionId: z.string().uuid().optional(),
     occasionName: z.string().trim().max(120).optional(),
     messageTemplateOverride: z
-      .union([z.string().trim().max(800), messageOverrideObjectSchema])
+      .union([z.string().trim().max(280), messageOverrideObjectSchema])
       .optional(),
     milestone: z
       .object({
@@ -215,6 +215,24 @@ export type CampaignSchedulePreviewInput = z.input<
 
 export const campaignMailingModeSchema = z.enum(["dry_run", "test", "live"]);
 
+function rejectLiveUnlessEnabled(
+  mailingMode: string | undefined,
+  ctx: z.RefinementCtx
+) {
+  if (mailingMode !== "live") return;
+  const enabled =
+    process.env.CAMPAIGN_LIVE_MAIL_ENABLED === "true" &&
+    process.env.POSTGRID_MODE === "live";
+  if (!enabled) {
+    ctx.addIssue({
+      code: "custom",
+      message:
+        "Live mailing mode is disabled. Set CAMPAIGN_LIVE_MAIL_ENABLED=true and POSTGRID_MODE=live.",
+      path: ["mailingMode"],
+    });
+  }
+}
+
 export const campaignOccasionConfigSchema = z
   .object({
     occasionId: z.string().uuid().optional(),
@@ -222,7 +240,7 @@ export const campaignOccasionConfigSchema = z
     customName: z.string().trim().min(1).max(120).optional(),
     occurrenceDate: civilDateSchema.optional(),
     leadDays: z.number().int().min(0).max(60).optional(),
-    messageTemplate: z.string().trim().max(800).optional().nullable(),
+    messageTemplate: z.string().trim().max(280).optional().nullable(),
     isEnabled: z.boolean().optional().default(true),
     excludedCustomerIds: z.array(z.string().uuid()).max(500).optional(),
   })
@@ -257,13 +275,7 @@ export const campaignCreateSchema = z
         path: ["endDate"],
       });
     }
-    if (value.mailingMode === "live") {
-      ctx.addIssue({
-        code: "custom",
-        message: "Live mailing mode is disabled",
-        path: ["mailingMode"],
-      });
-    }
+    rejectLiveUnlessEnabled(value.mailingMode, ctx);
   });
 
 export const campaignUpdateSchema = z
@@ -287,13 +299,7 @@ export const campaignUpdateSchema = z
         path: ["endDate"],
       });
     }
-    if (value.mailingMode === "live") {
-      ctx.addIssue({
-        code: "custom",
-        message: "Live mailing mode is disabled",
-        path: ["mailingMode"],
-      });
-    }
+    rejectLiveUnlessEnabled(value.mailingMode, ctx);
   });
 
 export const campaignExtendSchema = z.object({

@@ -22,7 +22,12 @@ describe("Phase 7 pricing abstraction", () => {
     expect(quote.physicalMailDisclaimer.toLowerCase()).toContain("not sent");
   });
 
-  it("UNIT_PASS: free authorize allows test and blocks live", async () => {
+  it("UNIT_PASS: free authorize allows test and blocks live unless enabled", async () => {
+    const prevLive = process.env.CAMPAIGN_LIVE_MAIL_ENABLED;
+    const prevMode = process.env.POSTGRID_MODE;
+    delete process.env.CAMPAIGN_LIVE_MAIL_ENABLED;
+    process.env.POSTGRID_MODE = "test";
+
     const svc = new FreePricingService();
     const ok = await svc.authorizeMailing({
       organizationId: "org",
@@ -40,6 +45,19 @@ describe("Phase 7 pricing abstraction", () => {
       mailingMode: "live",
     });
     expect(live.allowed).toBe(false);
+
+    process.env.CAMPAIGN_LIVE_MAIL_ENABLED = "true";
+    process.env.POSTGRID_MODE = "live";
+    const liveOk = await svc.authorizeMailing({
+      organizationId: "org",
+      campaignId: "c",
+      mailingId: "m3",
+      mailingMode: "live",
+    });
+    expect(liveOk.allowed).toBe(true);
+
+    process.env.CAMPAIGN_LIVE_MAIL_ENABLED = prevLive;
+    process.env.POSTGRID_MODE = prevMode;
   });
 
   it("UNIT_PASS: paid stub never enables charges and can deny budget", async () => {

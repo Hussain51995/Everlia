@@ -401,6 +401,12 @@ describe("Phase 8 TC-26…TC-33 Mailing engine", () => {
     expect(readRepo("lib/campaigns/preflight.ts")).toContain(
       "duplicate_committed"
     );
+    expect(readRepo("lib/campaigns/preflight.ts")).toContain(
+      "isMailingAlreadyCommitted"
+    );
+    expect(readRepo("lib/campaigns/preflight.ts")).not.toMatch(
+      /greeting_card_id\s*\|\|/
+    );
     expect(readRepo("lib/campaigns/schedule.ts")).toContain(
       "idempotency_key"
     );
@@ -436,16 +442,28 @@ describe("Phase 8 TC-26…TC-33 Mailing engine", () => {
     );
   });
 
-  it("TC-33: test mode never sends real (live) mail", () => {
+  it("TC-33: test mode never sends real (live) mail unless env-gated", () => {
+    const prevLive = process.env.CAMPAIGN_LIVE_MAIL_ENABLED;
+    const prevMode = process.env.POSTGRID_MODE;
+    delete process.env.CAMPAIGN_LIVE_MAIL_ENABLED;
+    process.env.POSTGRID_MODE = "test";
+
     expect(isCampaignWorkerMode("test")).toBe(true);
     expect(isCampaignWorkerMode("live")).toBe(false);
     expect(() => assertCampaignMailingModeAllowed("live")).toThrow(/disabled/i);
-    const claim = readRepo(
+    const claim028 = readRepo(
       "supabase/migrations/028_campaign_mailing_engine.sql"
     );
-    expect(claim).toContain("mailing_mode = 'test'");
+    expect(claim028).toContain("mailing_mode = 'test'");
+    const claim032 = readRepo(
+      "supabase/migrations/032_claim_live_campaign_mailings.sql"
+    );
+    expect(claim032).toContain("'live'");
     const cron = readRepo("app/api/cron/campaign-mailings/route.ts");
-    expect(cron).toContain("liveMailEnabled: false");
+    expect(cron).toContain("isCampaignLiveMailEnabled");
+
+    process.env.CAMPAIGN_LIVE_MAIL_ENABLED = prevLive;
+    process.env.POSTGRID_MODE = prevMode;
   });
 });
 
@@ -468,6 +486,11 @@ describe("Phase 8 TC-34…TC-38 Security", () => {
   });
 
   it("TC-37: prevent unauthorized live mailing activation", () => {
+    const prevLive = process.env.CAMPAIGN_LIVE_MAIL_ENABLED;
+    const prevMode = process.env.POSTGRID_MODE;
+    delete process.env.CAMPAIGN_LIVE_MAIL_ENABLED;
+    process.env.POSTGRID_MODE = "test";
+
     const liveCreate = campaignCreateSchema.safeParse({
       name: "Live Attempt",
       defaultTemplateId: UUID_T,
@@ -481,6 +504,12 @@ describe("Phase 8 TC-34…TC-38 Security", () => {
     expect(readRepo("lib/mail/mode-guard.ts")).toContain(
       "CAMPAIGN_LIVE_MAIL_ENABLED"
     );
+    expect(readRepo("lib/mail/mode-guard.ts")).toContain(
+      "isCampaignLiveMailEnabled"
+    );
+
+    process.env.CAMPAIGN_LIVE_MAIL_ENABLED = prevLive;
+    process.env.POSTGRID_MODE = prevMode;
   });
 
   it("TC-38: campaign RLS policies present", () => {
@@ -545,6 +574,8 @@ describe("Phase 8 migration sequence validation", () => {
       "app/dashboard/campaigns/new/page.tsx",
       "app/dashboard/campaigns/[id]/page.tsx",
       "app/api/cron/campaign-mailings/route.ts",
+      "app/api/campaigns/mailing-capabilities/route.ts",
+      "supabase/migrations/032_claim_live_campaign_mailings.sql",
       "vercel.json",
       "docs/architecture/campaign-phase7-billing.md",
     ]) {

@@ -2,7 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { todayInTimezone } from "@/lib/campaigns/civil-today";
 import { compareCivil } from "@/lib/campaigns/occasions";
 import { isCampaignWorkerMode } from "@/lib/mail/mode-guard";
-import type { CampaignMailing } from "@/lib/types/campaigns";
+import type { CampaignMailing, CampaignMailingMode } from "@/lib/types/campaigns";
 
 export type PreflightFailureCode =
   | "campaign_not_active"
@@ -93,6 +93,16 @@ function hasValidAddress(customer: PreflightContext["customer"]): boolean {
   );
 }
 
+export function isMailingAlreadyCommitted(mailing: {
+  status: string;
+  greeting_card_id?: string | null;
+  mail_transaction_id?: string | null;
+}): boolean {
+  if (mailing.status === "submitted") return true;
+  if (mailing.mail_transaction_id) return true;
+  return false;
+}
+
 export async function preflightCampaignMailing(
   mailingId: string
 ): Promise<PreflightResult> {
@@ -121,11 +131,7 @@ export async function preflightCampaignMailing(
     };
   }
 
-  if (
-    mailing.status === "submitted" ||
-    mailing.greeting_card_id ||
-    mailing.mail_transaction_id
-  ) {
+  if (isMailingAlreadyCommitted(mailing)) {
     return {
       ok: false,
       code: "duplicate_committed",
@@ -189,12 +195,12 @@ export async function preflightCampaignMailing(
     };
   }
 
-  if (!isCampaignWorkerMode(campaign.mailing_mode as "test")) {
+  if (!isCampaignWorkerMode(campaign.mailing_mode as CampaignMailingMode)) {
     return {
       ok: false,
       code: "mode_not_allowed",
       message: `Mailing mode ${campaign.mailing_mode} is not executable by the worker`,
-      recoverable: false,
+      recoverable: campaign.mailing_mode === "live",
     };
   }
 

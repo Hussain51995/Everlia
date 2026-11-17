@@ -1,5 +1,12 @@
 import type { CampaignMailingMode } from "@/lib/types/campaigns";
 
+export function isCampaignLiveMailEnabled(): boolean {
+  return (
+    process.env.CAMPAIGN_LIVE_MAIL_ENABLED === "true" &&
+    process.env.POSTGRID_MODE === "live"
+  );
+}
+
 export function assertCampaignMailingModeAllowed(
   mode: CampaignMailingMode
 ): void {
@@ -7,10 +14,7 @@ export function assertCampaignMailingModeAllowed(
     throw new Error("dry_run mode cannot submit campaign mailings");
   }
   if (mode === "live") {
-    const enabled =
-      process.env.CAMPAIGN_LIVE_MAIL_ENABLED === "true" &&
-      process.env.POSTGRID_MODE === "live";
-    if (!enabled) {
+    if (!isCampaignLiveMailEnabled()) {
       throw new Error(
         "Live campaign mailing is disabled. Set CAMPAIGN_LIVE_MAIL_ENABLED=true and POSTGRID_MODE=live only when explicitly authorized."
       );
@@ -19,7 +23,9 @@ export function assertCampaignMailingModeAllowed(
 }
 
 export function isCampaignWorkerMode(mode: CampaignMailingMode): boolean {
-  return mode === "test";
+  if (mode === "test") return true;
+  if (mode === "live") return isCampaignLiveMailEnabled();
+  return false;
 }
 
 export function assertTestProviderEnvironment(environment: string): void {
