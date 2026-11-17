@@ -10,6 +10,7 @@ import {
   secondaryButtonClass,
   textInputClass,
 } from "@/components/dashboard/campaigns/shared";
+import { CARD_MESSAGE_MAX } from "@/lib/campaigns/messages";
 
 type CustomerOption = {
   id: string;
@@ -198,16 +199,33 @@ export function OccasionEditDialog({
             </div>
 
             <div>
-              <label className={fieldLabelClass} htmlFor="occ-message">
-                Custom message (optional)
-              </label>
+              <div className="mb-1 flex items-end justify-between gap-2">
+                <label className={fieldLabelClass} htmlFor="occ-message">
+                  Custom message (optional)
+                </label>
+                {messageTemplate.trim() ? (
+                  <span
+                    className={`text-[10px] font-semibold tabular-nums ${
+                      messageTemplate.length >= CARD_MESSAGE_MAX
+                        ? "text-red-600"
+                        : "text-[#557393]"
+                    }`}
+                  >
+                    {messageTemplate.length}/{CARD_MESSAGE_MAX}
+                  </span>
+                ) : null}
+              </div>
               <textarea
                 id="occ-message"
                 className={`${textInputClass} min-h-[88px]`}
                 value={messageTemplate}
+                maxLength={CARD_MESSAGE_MAX}
                 onChange={(e) => setMessageTemplate(e.target.value)}
                 placeholder="Leave blank to use the Messages library default"
               />
+              <p className="mt-1 text-xs text-[#557393]">
+                Max {CARD_MESSAGE_MAX} characters so it fits on the card.
+              </p>
               {!messageTemplate.trim() && defaultMessagePreview?.trim() ? (
                 <p className="mt-2 rounded-xl bg-[#F8FCFD] px-3 py-2 text-xs text-[#557393]">
                   <span className="font-bold text-[#0B1F3D]">Default: </span>

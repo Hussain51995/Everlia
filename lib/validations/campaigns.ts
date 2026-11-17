@@ -2,9 +2,9 @@ import { z } from "zod";
 import { validateMessageTemplate } from "@/lib/campaigns/placeholders";
 
 const messageOverrideObjectSchema = z.object({
-  greetingTemplate: z.string().trim().min(1).max(200).optional(),
-  messageTemplate: z.string().trim().min(1).max(600).optional(),
-  footerTemplate: z.string().trim().max(160).nullable().optional(),
+  greetingTemplate: z.string().trim().min(1).max(80).optional(),
+  messageTemplate: z.string().trim().min(1).max(280).optional(),
+  footerTemplate: z.string().trim().max(90).nullable().optional(),
 });
 
 function assertPlaceholders(template: string, label: string) {
@@ -30,7 +30,7 @@ export const campaignPreviewSchema = z
     occasionId: z.string().uuid().optional(),
     occasionName: z.string().trim().max(120).optional(),
     messageTemplateOverride: z
-      .union([z.string().trim().max(800), messageOverrideObjectSchema])
+      .union([z.string().trim().max(280), messageOverrideObjectSchema])
       .optional(),
     milestone: z
       .object({
@@ -240,7 +240,7 @@ export const campaignOccasionConfigSchema = z
     customName: z.string().trim().min(1).max(120).optional(),
     occurrenceDate: civilDateSchema.optional(),
     leadDays: z.number().int().min(0).max(60).optional(),
-    messageTemplate: z.string().trim().max(800).optional().nullable(),
+    messageTemplate: z.string().trim().max(280).optional().nullable(),
     isEnabled: z.boolean().optional().default(true),
     excludedCustomerIds: z.array(z.string().uuid()).max(500).optional(),
   })

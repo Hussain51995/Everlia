@@ -16,13 +16,18 @@ import {
   sanitizeAiMessageDraft,
   takeRecentChatMessages,
 } from "@/lib/campaigns/ai-messages";
+import {
+  CARD_FOOTER_MAX,
+  CARD_GREETING_MAX,
+  CARD_MESSAGE_MAX,
+} from "@/lib/campaigns/messages";
 
 export const maxDuration = 60;
 
 const proposeMessageInputSchema = z.object({
-  greetingTemplate: z.string().min(1).max(200),
-  messageTemplate: z.string().min(1).max(800),
-  footerTemplate: z.string().max(200).optional().default(""),
+  greetingTemplate: z.string().min(1).max(CARD_GREETING_MAX),
+  messageTemplate: z.string().min(1).max(CARD_MESSAGE_MAX),
+  footerTemplate: z.string().max(CARD_FOOTER_MAX).optional().default(""),
 });
 
 export async function POST(request: Request) {

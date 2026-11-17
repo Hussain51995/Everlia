@@ -18,6 +18,11 @@ import {
 } from "@/components/dashboard/campaigns/shared";
 import { CATEGORY_LABELS } from "@/components/dashboard/campaigns/wizard/occasions-step-shared";
 import { AiMessageStudio } from "@/components/dashboard/messages/AiMessageStudio";
+import {
+  CARD_FOOTER_MAX,
+  CARD_GREETING_MAX,
+  CARD_MESSAGE_MAX,
+} from "@/lib/campaigns/messages";
 
 type EditorMode = "manual" | "ai";
 
@@ -372,41 +377,65 @@ export default function OccasionMessagesPage() {
               ) : (
                 <div className="space-y-3">
                   <div>
-                    <label className={fieldLabelClass} htmlFor="msg-greeting">
-                      Greeting / heading
-                    </label>
+                    <div className="mb-1 flex items-end justify-between gap-2">
+                      <label className={fieldLabelClass} htmlFor="msg-greeting">
+                        Greeting / heading
+                      </label>
+                      <span className="text-[10px] font-semibold tabular-nums text-[#557393]">
+                        {greetingTemplate.length}/{CARD_GREETING_MAX}
+                      </span>
+                    </div>
                     <input
                       id="msg-greeting"
                       className={textInputClass}
                       value={greetingTemplate}
+                      maxLength={CARD_GREETING_MAX}
                       onChange={(e) => setGreetingTemplate(e.target.value)}
                       placeholder="e.g. Happy Birthday!"
                     />
                   </div>
                   <div>
-                    <label className={fieldLabelClass} htmlFor="msg-body">
-                      Message body
-                    </label>
+                    <div className="mb-1 flex items-end justify-between gap-2">
+                      <label className={fieldLabelClass} htmlFor="msg-body">
+                        Message body
+                      </label>
+                      <span
+                        className={`text-[10px] font-semibold tabular-nums ${
+                          messageTemplate.length >= CARD_MESSAGE_MAX
+                            ? "text-red-600"
+                            : "text-[#557393]"
+                        }`}
+                      >
+                        {messageTemplate.length}/{CARD_MESSAGE_MAX}
+                      </span>
+                    </div>
                     <textarea
                       id="msg-body"
                       className={`${textInputClass} min-h-[140px]`}
                       value={messageTemplate}
+                      maxLength={CARD_MESSAGE_MAX}
                       onChange={(e) => setMessageTemplate(e.target.value)}
                       placeholder="Write the main message for the card…"
                     />
                     <p className="mt-1.5 text-xs text-[#557393]">
-                      Tip: you can use the client’s first name later with AI, or
-                      keep the wording general.
+                      Limited to {CARD_MESSAGE_MAX} characters so it fits on the
+                      card.
                     </p>
                   </div>
                   <div>
-                    <label className={fieldLabelClass} htmlFor="msg-footer">
-                      Footer (optional)
-                    </label>
+                    <div className="mb-1 flex items-end justify-between gap-2">
+                      <label className={fieldLabelClass} htmlFor="msg-footer">
+                        Footer (optional)
+                      </label>
+                      <span className="text-[10px] font-semibold tabular-nums text-[#557393]">
+                        {footerTemplate.length}/{CARD_FOOTER_MAX}
+                      </span>
+                    </div>
                     <input
                       id="msg-footer"
                       className={textInputClass}
                       value={footerTemplate}
+                      maxLength={CARD_FOOTER_MAX}
                       onChange={(e) => setFooterTemplate(e.target.value)}
                       placeholder="e.g. WITH APPRECIATION"
                     />

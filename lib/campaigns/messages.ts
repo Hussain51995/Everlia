@@ -5,6 +5,10 @@ import {
   type PlaceholderContext,
 } from "@/lib/campaigns/placeholders";
 
+export const CARD_GREETING_MAX = 80;
+export const CARD_MESSAGE_MAX = 280;
+export const CARD_FOOTER_MAX = 90;
+
 export type OccasionMessageDefinition = {
   slug: string;
   greetingTemplate: string;
@@ -274,14 +278,14 @@ export function resolveOccasionCopy(options: {
 
   return {
     greeting: resolveMessageTemplate(definition.greetingTemplate, options.context, {
-      maxLength: 80,
+      maxLength: CARD_GREETING_MAX,
     }),
     message: resolveMessageTemplate(definition.messageTemplate, options.context, {
-      maxLength: 280,
+      maxLength: CARD_MESSAGE_MAX,
     }),
     footer: definition.footerTemplate
       ? resolveMessageTemplate(definition.footerTemplate, options.context, {
-          maxLength: 90,
+          maxLength: CARD_FOOTER_MAX,
         })
       : "",
     definition,

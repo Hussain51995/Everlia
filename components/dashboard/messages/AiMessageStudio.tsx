@@ -6,6 +6,11 @@ import {
   extractLatestProposedDraft,
   type AiMessageDraft,
 } from "@/lib/campaigns/ai-messages";
+import {
+  CARD_FOOTER_MAX,
+  CARD_GREETING_MAX,
+  CARD_MESSAGE_MAX,
+} from "@/lib/campaigns/messages";
 import { useOccasionMessageAiChat } from "@/hooks/campaigns/use-occasion-message-ai-chat";
 import {
   fieldLabelClass,
@@ -250,9 +255,18 @@ export function AiMessageStudio({
           <div>
             <p className="text-sm font-bold text-[#0B1F3D]">Your message</p>
             <p className="text-xs text-[#557393]">
-              This is what goes on the card. Edit freely, then save.
+              Keep it short so it fits on the card. Then save.
             </p>
           </div>
+          <p
+            className={`text-xs font-semibold tabular-nums ${
+              draft.messageTemplate.length >= CARD_MESSAGE_MAX
+                ? "text-red-600"
+                : "text-[#557393]"
+            }`}
+          >
+            {draft.messageTemplate.length}/{CARD_MESSAGE_MAX}
+          </p>
         </div>
 
         <div className="rounded-3xl border border-[#C4EBF2] bg-white p-5 shadow-sm">
@@ -263,9 +277,13 @@ export function AiMessageStudio({
             id="studio-greeting"
             className="w-full border-0 bg-transparent text-center text-xl font-bold text-[#0B1F3D] outline-none placeholder:text-[#9BB0C4] focus:ring-0"
             value={draft.greetingTemplate}
+            maxLength={CARD_GREETING_MAX}
             placeholder="Greeting"
             onChange={(e) => patch({ greetingTemplate: e.target.value })}
           />
+          <p className="mt-1 text-center text-[10px] tabular-nums text-[#9BB0C4]">
+            {draft.greetingTemplate.length}/{CARD_GREETING_MAX}
+          </p>
           <div className="mx-auto my-3 h-px w-16 bg-[#C4EBF2]" />
           <label className="sr-only" htmlFor="studio-body">
             Message body
@@ -274,6 +292,7 @@ export function AiMessageStudio({
             id="studio-body"
             className="min-h-[140px] w-full resize-y border-0 bg-transparent text-center text-[15px] leading-relaxed text-[#557393] outline-none placeholder:text-[#9BB0C4] focus:ring-0"
             value={draft.messageTemplate}
+            maxLength={CARD_MESSAGE_MAX}
             placeholder="Message body"
             onChange={(e) => patch({ messageTemplate: e.target.value })}
           />
@@ -284,9 +303,13 @@ export function AiMessageStudio({
             id="studio-footer"
             className="mt-3 w-full border-0 bg-transparent text-center text-xs font-semibold uppercase tracking-[0.12em] text-[#0E7490] outline-none placeholder:normal-case placeholder:tracking-normal placeholder:text-[#9BB0C4] focus:ring-0"
             value={draft.footerTemplate}
+            maxLength={CARD_FOOTER_MAX}
             placeholder="Optional footer"
             onChange={(e) => patch({ footerTemplate: e.target.value })}
           />
+          <p className="mt-1 text-center text-[10px] tabular-nums text-[#9BB0C4]">
+            {draft.footerTemplate.length}/{CARD_FOOTER_MAX}
+          </p>
         </div>
 
         <p className="mt-2 text-xs text-[#557393]">

@@ -62,13 +62,21 @@ describe("AI occasion message drafts", () => {
     expect(parsed.success).toBe(true);
   });
 
-  it("rejects oversized greeting in draft schema", () => {
-    const parsed = aiMessageDraftSchema.safeParse({
-      greetingTemplate: "x".repeat(201),
-      messageTemplate: "Body",
-      footerTemplate: "",
-    });
-    expect(parsed.success).toBe(false);
+  it("rejects oversized greeting or body in draft schema", () => {
+    expect(
+      aiMessageDraftSchema.safeParse({
+        greetingTemplate: "x".repeat(81),
+        messageTemplate: "Body",
+        footerTemplate: "",
+      }).success
+    ).toBe(false);
+    expect(
+      aiMessageDraftSchema.safeParse({
+        greetingTemplate: "Hello!",
+        messageTemplate: "x".repeat(281),
+        footerTemplate: "",
+      }).success
+    ).toBe(false);
   });
 
   it("takes only the most recent chat turns", () => {

@@ -1,13 +1,18 @@
 import { z } from "zod";
 import {
+  CARD_FOOTER_MAX,
+  CARD_GREETING_MAX,
+  CARD_MESSAGE_MAX,
+} from "@/lib/campaigns/messages";
+import {
   CAMPAIGN_PLACEHOLDERS,
   listPlaceholdersInTemplate,
   validateMessageTemplate,
 } from "@/lib/campaigns/placeholders";
 
-export const AI_MESSAGE_GREETING_MAX = 200;
-export const AI_MESSAGE_BODY_MAX = 800;
-export const AI_MESSAGE_FOOTER_MAX = 200;
+export const AI_MESSAGE_GREETING_MAX = CARD_GREETING_MAX;
+export const AI_MESSAGE_BODY_MAX = CARD_MESSAGE_MAX;
+export const AI_MESSAGE_FOOTER_MAX = CARD_FOOTER_MAX;
 export const AI_CHAT_HISTORY_MAX_TURNS = 12;
 
 export const aiMessageDraftSchema = z.object({
@@ -142,6 +147,7 @@ export function buildAiMessageSystemPrompt(input: {
     `Allowed placeholders only: ${placeholders}`,
     "Never invent placeholders. Prefer {{customer.firstName}}, {{milestone.years}}, {{occasion.name}}, {{sender.firstName}} when personalization helps.",
     "Tone: warm, professional, personal — never salesy, spammy, or emoji-heavy.",
+    `Keep the body short enough to fit on a postcard (under ${AI_MESSAGE_BODY_MAX} characters). Prefer ~2–4 short sentences.`,
     `Occasion: ${occasionLabel} (slug: ${input.occasionSlug}).`,
     `Organization: ${org}. Sender display name: ${sender}.`,
     "Current card draft the user may want refined:",
