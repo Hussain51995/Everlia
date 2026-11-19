@@ -7,7 +7,7 @@ export function Footer() {
       <div className="container-shell">
         <div className="grid items-center gap-6 pb-6 text-center lg:grid-cols-[1fr_auto_1fr] lg:text-left">
           <div className="justify-self-center lg:justify-self-start">
-            <Logo />
+            <Logo variant="color" href="#top" height={48} />
           </div>
 
           <nav className="flex flex-wrap justify-center gap-x-8 gap-y-3 text-xs font-semibold text-[#446688]">
