@@ -9,7 +9,6 @@ import { SparklesIcon } from "@/components/ui/Icons";
 import {
   CampaignStatusBadge,
   fieldLabelClass,
-  primaryButtonClass,
   textInputClass,
 } from "@/components/dashboard/campaigns/shared";
 import { StartCampaignDialog } from "@/components/dashboard/campaigns/StartCampaignDialog";
@@ -39,23 +38,24 @@ export default function CampaignsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-4 rounded-3xl border border-[#C4EBF2] bg-[#0B1F3D] p-6 text-white shadow-sm sm:flex-row sm:items-center sm:justify-between">
-        <div>
+      <div className="flex flex-col gap-3 rounded-3xl border border-[#C4EBF2] bg-[#0B1F3D] p-5 text-white shadow-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-6">
+        <div className="min-w-0">
           <p className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[#38B2D1]">
             <SparklesIcon className="h-3.5 w-3.5" />
             Automated campaigns
           </p>
-          <h1 className="mt-1 text-2xl font-black sm:text-3xl">Campaigns</h1>
-          <p className="mt-1 text-sm text-white/80">
+          <h1 className="mt-1 text-xl font-black sm:text-3xl">Campaigns</h1>
+          <p className="mt-1 text-xs text-white/80 sm:text-sm">
             Create, monitor, and manage greeting card journeys. Test mode only —
             no live postage yet.
           </p>
         </div>
         <button
           type="button"
-          className={`${primaryButtonClass} shrink-0`}
+          className="inline-flex w-full shrink-0 items-center justify-center gap-1.5 rounded-xl bg-[#38B2D1] px-3.5 py-2.5 text-[11px] font-bold text-white shadow-md shadow-[#38B2D1]/25 transition-all hover:bg-[#2ca0be] sm:w-auto sm:rounded-2xl sm:px-4 sm:text-xs"
           onClick={() => setDialogOpen(true)}
         >
+          <SparklesIcon className="h-3.5 w-3.5 shrink-0" />
           Start Campaign
         </button>
       </div>
@@ -112,9 +112,10 @@ export default function CampaignsPage() {
               </p>
               <button
                 type="button"
-                className={`${primaryButtonClass} mt-4`}
+                className="mt-4 inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#38B2D1] px-3.5 py-2.5 text-[11px] font-bold text-white shadow-md shadow-[#38B2D1]/25 transition-all hover:bg-[#2ca0be] sm:rounded-2xl sm:px-4 sm:text-xs"
                 onClick={() => setDialogOpen(true)}
               >
+                <SparklesIcon className="h-3.5 w-3.5 shrink-0" />
                 Start Campaign
               </button>
             </div>

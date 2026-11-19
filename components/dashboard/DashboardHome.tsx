@@ -102,9 +102,9 @@ export function DashboardHome() {
           aria-hidden
         />
 
-        <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-2xl">
-            <div className="flex flex-wrap items-center gap-2">
+        <div className="relative space-y-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-[#C4EBF2] bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-[#38B2D1] shadow-xs">
                 <SparklesIcon className="h-3.5 w-3.5" />
                 Live Workspace Active
@@ -115,50 +115,55 @@ export function DashboardHome() {
                 {industryName ? ` · ${industryName}` : ""}
               </span>
             </div>
-            <h1 className="mt-3 text-2xl font-black text-white sm:text-3xl">
-              Welcome back, {firstName}
-            </h1>
-            <p className="mt-2 max-w-xl text-sm text-white/80">
-              Automate client greetings with campaigns — the core of Everlia.
-              One setup, ongoing mail for birthdays, anniversaries, and
-              holidays.
-            </p>
-            <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-white/70">
-              <span className="inline-flex items-center gap-1.5 font-semibold">
-                <CalendarIcon className="h-3.5 w-3.5 text-[#38B2D1]" />
-                {statsLoading ? "…" : cardsThisMonthLabel}
-              </span>
-              <span className="hidden h-1 w-1 rounded-full bg-white/30 sm:inline-block" />
-              <span>
-                Workspace:{" "}
-                <span className="font-bold text-[#38B2D1]">{orgName}</span>
-              </span>
+            <div className="shrink-0">
+              <RefetchButton onClick={handleRefresh} isRefreshing={refreshing} />
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center lg:flex-col lg:items-stretch xl:flex-row">
-            <Link
-              href="/dashboard/customers"
-              className="group inline-flex min-h-[52px] items-center justify-center gap-2.5 rounded-2xl bg-[#38B2D1] px-6 py-3.5 text-sm font-black text-white shadow-lg shadow-[#38B2D1]/35 transition-all hover:-translate-y-0.5 hover:bg-[#43c5e6] hover:shadow-xl hover:shadow-[#38B2D1]/40 active:translate-y-0"
-            >
-              <SparklesIcon className="h-5 w-5 transition-transform group-hover:rotate-6" />
-              Start Campaign
-            </Link>
-            <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="max-w-2xl">
+              <h1 className="text-2xl font-black text-white sm:text-3xl">
+                Welcome back, {firstName}
+              </h1>
+              <p className="mt-2 max-w-xl text-sm text-white/80">
+                Automate client greetings with campaigns — the core of Everlia.
+                One setup, ongoing mail for birthdays, anniversaries, and
+                holidays.
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-white/70">
+                <span className="inline-flex items-center gap-1.5 font-semibold">
+                  <CalendarIcon className="h-3.5 w-3.5 text-[#38B2D1]" />
+                  {statsLoading ? "…" : cardsThisMonthLabel}
+                </span>
+                <span className="hidden h-1 w-1 rounded-full bg-white/30 sm:inline-block" />
+                <span>
+                  Workspace:{" "}
+                  <span className="font-bold text-[#38B2D1]">{orgName}</span>
+                </span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <Link
+                href="/dashboard/customers"
+                className="group inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl bg-[#38B2D1] px-3.5 py-2 text-[11px] font-bold text-white shadow-md shadow-[#38B2D1]/30 transition-all hover:bg-[#43c5e6] active:scale-[0.98] sm:min-h-[42px] sm:gap-2 sm:rounded-2xl sm:px-4 sm:text-xs"
+              >
+                <SparklesIcon className="h-3.5 w-3.5 shrink-0 transition-transform group-hover:rotate-6 sm:h-4 sm:w-4" />
+                Start Campaign
+              </Link>
               <Link
                 href="/dashboard/customers?add=1"
-                className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-white/15 sm:flex-none"
+                className="inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-[11px] font-bold text-white transition hover:bg-white/15 sm:min-h-[42px] sm:rounded-2xl sm:px-3.5 sm:text-xs"
               >
-                <UsersIcon className="h-4 w-4" />
+                <UsersIcon className="h-3.5 w-3.5 shrink-0" />
                 Add Customer
               </Link>
               <Link
                 href="/dashboard/templates"
-                className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/5 px-4 py-2.5 text-xs font-bold text-white/85 transition hover:bg-white/10 hover:text-white sm:flex-none"
+                className="inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl border border-white/20 bg-white/5 px-3 py-2 text-[11px] font-bold text-white/85 transition hover:bg-white/10 hover:text-white sm:min-h-[42px] sm:rounded-2xl sm:px-3.5 sm:text-xs"
               >
                 Send one-off card
               </Link>
-              <RefetchButton onClick={handleRefresh} isRefreshing={refreshing} />
             </div>
           </div>
         </div>
