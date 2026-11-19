@@ -16,7 +16,7 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
     <div className="flex min-h-screen w-full bg-[#F0FAFC]">
       <div className="flex w-full flex-col justify-between px-6 py-8 lg:w-1/2 lg:px-16 xl:px-24">
         <div className="flex items-center justify-between">
-          <Logo />
+          <Logo href="/" height={40} />
           <Link
             href="/"
             className="group inline-flex items-center gap-1.5 text-xs font-semibold text-[#557393] transition-colors hover:text-[#38B2D1]"

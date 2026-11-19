@@ -16,6 +16,7 @@ import {
   PlusIcon,
   CalendarIcon,
 } from "@/components/ui/Icons";
+import { Logo } from "@/components/ui/Logo";
 import { useSetActiveOrganization, useSignOut } from "@/hooks/auth";
 import { useAuthStore } from "@/stores/auth-store";
 import { useToast } from "@/components/ui/Toast";
@@ -150,49 +151,34 @@ export function Sidebar({ mobileOpen, onCloseMobile, onStartCampaign }: SidebarP
           }`}
       >
         <div>
-          <div className="flex items-center justify-between pb-6 border-b border-white/10">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2.5 group select-none"
-              aria-label="Back to Everlia website"
-            >
-              <span className="grid h-9 w-9 place-items-center text-[#38B2D1] sm:h-10 sm:w-10 transition-transform group-hover:scale-105">
-                <svg viewBox="0 0 32 32" className="h-full w-full fill-none stroke-current" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 14.5L16 4.5L28 14.5V26.5C28 27.0523 27.5523 27.5 27 27.5H5C4.44772 27.5 4 27.0523 4 26.5V14.5Z" />
-                  <circle cx="16" cy="18" r="3.5" strokeWidth="2" />
-                </svg>
-              </span>
-              <span className="leading-tight">
-                <span className="block text-[17px] font-extrabold tracking-[-0.03em] text-white">Everlia™</span>
-                <span className="block text-[8px] font-bold tracking-[0.14em] text-[#C4EBF2] uppercase">Clients For Life</span>
-              </span>
-            </Link>
+          <div className="relative flex items-center justify-center pb-5 border-b border-white/10">
+            <Logo variant="white" href="/" height={48} />
             <button
               onClick={onCloseMobile}
-              className="grid h-8 w-8 place-items-center rounded-xl bg-white/10 text-white hover:bg-white/20 lg:hidden"
+              className="absolute right-0 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-xl bg-white/10 text-white hover:bg-white/20 lg:hidden"
             >
               <CloseIcon className="h-4 w-4" />
             </button>
           </div>
 
-          <div className="mt-6 space-y-2">
+          <div className="mt-4 space-y-2">
             <button
               type="button"
               onClick={() => {
                 onCloseMobile();
                 onStartCampaign();
               }}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#38B2D1] py-3 text-xs font-bold text-white shadow-lg shadow-[#38B2D1]/25 transition-all hover:bg-[#43c5e6] active:scale-[0.98]"
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#38B2D1] px-3 py-2.5 text-[11px] font-bold text-white shadow-md shadow-[#38B2D1]/20 transition-all hover:bg-[#43c5e6] active:scale-[0.98] sm:rounded-2xl sm:py-2.5 sm:text-xs"
             >
-              <SparklesIcon className="h-4 w-4" />
+              <SparklesIcon className="h-3.5 w-3.5 shrink-0" />
               <span>Start Campaign</span>
             </button>
             <Link
               href="/dashboard/templates"
               onClick={onCloseMobile}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/15 bg-white/5 py-2.5 text-[11px] font-bold text-[#C4EBF2] transition-all hover:bg-white/10 hover:text-white"
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-[11px] font-bold text-[#C4EBF2] transition-all hover:bg-white/10 hover:text-white sm:rounded-2xl sm:py-2.5"
             >
-              <SendIcon className="h-3.5 w-3.5" />
+              <SendIcon className="h-3.5 w-3.5 shrink-0" />
               <span>Send one-off card</span>
             </Link>
           </div>

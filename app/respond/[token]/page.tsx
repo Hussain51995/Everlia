@@ -7,29 +7,10 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiClient, ApiClientError } from "@/lib/api/client";
 import type { PublicRespondPayload } from "@/lib/types/cards";
 import { UserIcon } from "@/components/ui/Icons";
+import { Logo } from "@/components/ui/Logo";
 import { ThemeLoader } from "@/components/ui/ThemeLoader";
 
 type ResponseType = "thank" | "message" | "contact_request";
-
-function EverliaMark({
-  className = "h-14 w-14",
-}: {
-  className?: string;
-}) {
-  return (
-    <svg
-      viewBox="0 0 32 32"
-      className={`fill-none stroke-current ${className}`}
-      strokeWidth="2.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M4 14.5L16 4.5L28 14.5V26.5C28 27.0523 27.5523 27.5 27 27.5H5C4.44772 27.5 4 27.0523 4 26.5V14.5Z" />
-      <circle cx="16" cy="18" r="3.5" strokeWidth="2" />
-    </svg>
-  );
-}
 
 function MapPinIcon({
   className = "h-3 w-3",
@@ -70,17 +51,7 @@ function QuoteIcon({
 function BrandHeader() {
   return (
     <header className="flex flex-col items-center pb-3 pt-1 text-center min-[360px]:pb-3.5 sm:pb-5 sm:pt-2">
-      <div className="grid h-12 w-12 place-items-center rounded-[1rem] bg-white/95 text-[#38B2D1] shadow-[0_10px_30px_-12px_rgba(56,178,209,0.55)] ring-1 ring-[#C4EBF2] backdrop-blur-sm min-[360px]:h-14 min-[360px]:w-14 min-[360px]:rounded-2xl sm:h-20 sm:w-20 sm:rounded-[1.5rem]">
-        <EverliaMark className="h-7 w-7 min-[360px]:h-8 min-[360px]:w-8 sm:h-12 sm:w-12" />
-      </div>
-
-      <p className="mt-2 text-[1.35rem] font-extrabold leading-none tracking-[-0.04em] text-[#0B1F3D] min-[360px]:mt-2.5 min-[360px]:text-2xl sm:mt-3.5 sm:text-3xl">
-        Everlia™
-      </p>
-
-      <p className="mt-1 text-[8px] font-bold uppercase tracking-[0.2em] text-[#38B2D1] min-[360px]:text-[9px] min-[360px]:tracking-[0.22em]">
-        Clients for life
-      </p>
+      <Logo href="/" height={80} />
     </header>
   );
 }
