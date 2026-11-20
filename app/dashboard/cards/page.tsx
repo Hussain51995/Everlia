@@ -170,7 +170,7 @@ export default function CardsListPage() {
                     </td>
                     <td className="px-4 py-3">
                       <span
-                        className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ${
+                        className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-bold ${
                           STATUS_COLORS[card.status] ??
                           "bg-slate-100 text-slate-700"
                         }`}

@@ -27,32 +27,34 @@ export function RecentActivityTable({
   });
 
   const getStatusBadge = (status: ActivityStatus) => {
+    const base =
+      "inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-extrabold";
     switch (status) {
       case "Scanned QR":
         return (
-          <span className="inline-flex items-center gap-1 rounded-full border border-[#38B2D1]/30 bg-[#38B2D1]/15 px-2.5 py-1 text-[11px] font-extrabold text-[#38B2D1]">
-            <SparklesIcon className="h-3 w-3" />
+          <span className={`${base} border-[#38B2D1]/30 bg-[#38B2D1]/15 text-[#38B2D1]`}>
+            <SparklesIcon className="h-3 w-3 shrink-0" />
             Scanned QR
           </span>
         );
       case "Delivered":
         return (
-          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-extrabold text-emerald-600">
-            <CheckCircleIcon className="h-3 w-3" />
+          <span className={`${base} border-emerald-200 bg-emerald-50 text-emerald-600`}>
+            <CheckCircleIcon className="h-3 w-3 shrink-0" />
             Delivered
           </span>
         );
       case "In Transit":
         return (
-          <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-extrabold text-amber-600">
-            <SendIcon className="h-3 w-3" />
+          <span className={`${base} border-amber-200 bg-amber-50 text-amber-600`}>
+            <SendIcon className="h-3 w-3 shrink-0" />
             In Transit
           </span>
         );
       case "Pending Review":
         return (
-          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[11px] font-extrabold text-slate-600">
-            <ClockIcon className="h-3 w-3" />
+          <span className={`${base} border-slate-200 bg-slate-100 text-slate-600`}>
+            <ClockIcon className="h-3 w-3 shrink-0" />
             Pending
           </span>
         );
@@ -71,15 +73,15 @@ export function RecentActivityTable({
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex rounded-2xl border border-[#C4EBF2] bg-[#F0FAFC] p-1">
+        <div className="flex max-w-full overflow-x-auto pb-0.5">
+          <div className="flex shrink-0 rounded-2xl border border-[#C4EBF2] bg-[#F0FAFC] p-1">
             {["All", "Scanned QR", "Delivered", "In Transit", "Pending Review"].map(
               (st) => (
                 <button
                   key={st}
                   type="button"
                   onClick={() => setFilterStatus(st)}
-                  className={`rounded-xl px-2.5 py-1 text-[11px] font-bold transition-all ${
+                  className={`whitespace-nowrap rounded-xl px-2.5 py-1 text-[11px] font-bold transition-all ${
                     filterStatus === st
                       ? "bg-[#38B2D1] text-white shadow-xs"
                       : "text-[#557393] hover:text-[#0B1F3D]"
@@ -112,15 +114,14 @@ export function RecentActivityTable({
         </div>
       ) : (
         <div className="mt-4 overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full min-w-[720px] text-left text-xs">
             <thead>
               <tr className="border-b border-[#C4EBF2] text-[10px] font-extrabold uppercase tracking-wider text-[#557393]">
                 <th className="px-3 py-3">Client &amp; Address</th>
                 <th className="px-3 py-3">Campaign Mailer</th>
                 <th className="px-3 py-3">Tracking ID</th>
                 <th className="px-3 py-3">Date</th>
-                <th className="px-3 py-3">Status</th>
-                <th className="px-3 py-3 text-right">Action</th>
+                <th className="px-3 py-3 text-right">Status &amp; Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#C4EBF2]/60">
@@ -130,39 +131,39 @@ export function RecentActivityTable({
                   className="group transition-colors hover:bg-[#F0FAFC]"
                 >
                   <td className="px-3 py-3.5">
-                    <div className="flex items-center gap-3">
-                      <div className="grid h-9 w-9 place-items-center rounded-xl bg-[#38B2D1]/15 text-[11px] font-extrabold text-[#38B2D1] ring-1 ring-[#C4EBF2]">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#38B2D1]/15 text-[11px] font-extrabold text-[#38B2D1] ring-1 ring-[#C4EBF2]">
                         {item.initials}
                       </div>
-                      <div>
-                        <div className="text-xs font-bold text-[#0B1F3D] sm:text-sm">
+                      <div className="min-w-0">
+                        <div className="truncate text-xs font-bold text-[#0B1F3D] sm:text-sm">
                           {item.clientName}
                         </div>
-                        <div className="text-[11px] text-[#557393]">
+                        <div className="truncate text-[11px] text-[#557393]">
                           {item.address}
                         </div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-3 py-3.5 font-semibold text-[#10284D]">
+                  <td className="max-w-[160px] truncate px-3 py-3.5 font-semibold text-[#10284D]">
                     {item.campaign}
                   </td>
-                  <td className="px-3 py-3.5 font-mono text-[11px] font-bold text-[#38B2D1]">
+                  <td className="whitespace-nowrap px-3 py-3.5 font-mono text-[11px] font-bold text-[#38B2D1]">
                     {item.trackingId}
                   </td>
-                  <td className="px-3 py-3.5 font-medium text-[#557393]">
+                  <td className="whitespace-nowrap px-3 py-3.5 font-medium text-[#557393]">
                     {item.dateSent}
                   </td>
                   <td className="px-3 py-3.5">
-                    {getStatusBadge(item.status)}
-                  </td>
-                  <td className="px-3 py-3.5 text-right">
-                    <Link
-                      href={item.href}
-                      className="inline-block rounded-xl border border-[#C4EBF2] bg-white px-3 py-1.5 text-[11px] font-bold text-[#0B1F3D] shadow-xs transition-all hover:border-[#38B2D1] hover:bg-[#38B2D1] hover:text-white"
-                    >
-                      View Card
-                    </Link>
+                    <div className="flex items-center justify-end gap-2 whitespace-nowrap">
+                      {getStatusBadge(item.status)}
+                      <Link
+                        href={item.href}
+                        className="inline-flex shrink-0 items-center rounded-xl border border-[#C4EBF2] bg-white px-3 py-1.5 text-[11px] font-bold text-[#0B1F3D] shadow-xs transition-all hover:border-[#38B2D1] hover:bg-[#38B2D1] hover:text-white"
+                      >
+                        View Card
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}
