@@ -43,6 +43,8 @@ export async function PATCH(request: Request, { params }: Params) {
       updates.postal_or_zip = input.postal_or_zip;
     if (input.country_code !== undefined)
       updates.country_code = input.country_code.toUpperCase();
+    if (input.property_address !== undefined)
+      updates.property_address = input.property_address;
 
     const supabase = createClient();
     const { data, error } = await supabase

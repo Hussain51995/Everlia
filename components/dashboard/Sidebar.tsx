@@ -114,6 +114,12 @@ export function Sidebar({
             icon: BuildingIcon,
             badge: "Admin" as string | null,
           },
+          {
+            name: "RentCast Tester",
+            href: "/dashboard/admin/rentcast-tester",
+            icon: BuildingIcon,
+            badge: "Dev" as string | null,
+          },
         ]
       : []),
   ];

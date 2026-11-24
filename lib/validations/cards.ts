@@ -24,6 +24,11 @@ export const customerCreateSchema = z.object({
     .trim()
     .length(2, "Country code must be 2 letters")
     .default("US"),
+  property_address: z
+    .string()
+    .trim()
+    .min(1, "Property address is required")
+    .max(300),
 });
 
 export const customerUpdateSchema = customerCreateSchema.partial();
