@@ -217,9 +217,13 @@ export type PublicRespondPayload = {
   senderName: string;
   senderTitle: string | null;
   profileImageUrl: string | null;
+  senderPhone: string | null;
+  senderEmail: string | null;
+  senderWebsite: string | null;
   occasionLabel: string;
   personalMessage: string | null;
   organizationName: string | null;
+  propertyIntelligence?: import("@/lib/property-intelligence/browser/types").PropertyIntelligenceBootstrap | null;
 };
 
 export const CARD_STATUS_LABELS: Record<GreetingCardStatus, string> = {

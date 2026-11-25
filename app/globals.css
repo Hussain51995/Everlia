@@ -51,4 +51,27 @@ a, button { -webkit-tap-highlight-color: transparent; }
   .blue-glow {
     box-shadow: 0 12px 30px rgba(56, 178, 209, 0.25);
   }
+
+  .everlia-pane-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: #9fd8e8 transparent;
+  }
+  .everlia-pane-scroll::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  .everlia-pane-scroll::-webkit-scrollbar-track {
+    background: transparent;
+    margin-block: 10px;
+  }
+  .everlia-pane-scroll::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #9fd8e8 0%, #38b2d1 100%);
+    border-radius: 999px;
+  }
+  .everlia-pane-scroll::-webkit-scrollbar-thumb:hover {
+    background: #38b2d1;
+  }
+  .everlia-pane-scroll::-webkit-scrollbar-corner {
+    background: transparent;
+  }
 }
