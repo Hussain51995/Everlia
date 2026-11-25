@@ -30,7 +30,9 @@ export function NewCustomerForm({
         {NEW_CUSTOMER_FIELDS.map(([key, label]) => (
           <label
             key={key}
-            className="space-y-1 text-xs font-semibold text-[#557393]"
+            className={`space-y-1 text-xs font-semibold text-[#557393] ${
+              key === "property_address" ? "sm:col-span-2" : ""
+            }`}
           >
             <span>{label}</span>
             <input
@@ -39,7 +41,12 @@ export function NewCustomerForm({
                 onChange({
                   ...value,
                   [key]: e.target.value,
-                })
+                } as NewCustomerFormState)
+              }
+              required={
+                key !== "email" &&
+                key !== "phone" &&
+                key !== "address_line2"
               }
               className="w-full rounded-xl border border-[#C4EBF2] bg-white px-3 py-2 text-sm text-[#0B1F3D] outline-none transition focus:border-[#38B2D1]"
             />

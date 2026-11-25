@@ -38,9 +38,11 @@ const EMPTY = {
   province_or_state: "",
   postal_or_zip: "",
   country_code: "US",
+  property_address: "",
   birthday: "",
   closing_date: "",
   property_type: "",
+  custom_property_type: "",
 };
 
 const PROPERTY_TYPES = [
@@ -64,6 +66,7 @@ function CustomerMilestonesPanel({ customer }: { customer: Customer }) {
   const [customDate, setCustomDate] = useState("");
   const [customLabel, setCustomLabel] = useState("");
   const [customPropertyType, setCustomPropertyType] = useState("");
+  const [customOtherPropertyType, setCustomOtherPropertyType] = useState("");
 
   const birthday = useMemo(
     () => milestones?.find((m) => m.milestone_type === "birthday"),
@@ -110,6 +113,11 @@ function CustomerMilestonesPanel({ customer }: { customer: Customer }) {
             </p>
             {closing?.property_type ? (
               <p className="text-xs text-[#557393]">{closing.property_type}</p>
+            ) : null}
+            {customer.property_address ? (
+              <p className="text-xs text-[#557393]">
+                Property: {customer.property_address}
+              </p>
             ) : null}
           </div>
         </div>
@@ -170,17 +178,22 @@ function CustomerMilestonesPanel({ customer }: { customer: Customer }) {
             });
             return;
           }
+          const finalPropType =
+            customPropertyType === "Other"
+              ? customOtherPropertyType.trim()
+              : customPropertyType;
           try {
             await createMilestone.mutateAsync({
               milestone_type: "custom",
               anchor_date: customDate,
               label: customLabel.trim(),
-              property_type: customPropertyType || "",
+              property_type: finalPropType || "",
               recurs_annually: true,
             });
             setCustomDate("");
             setCustomLabel("");
             setCustomPropertyType("");
+            setCustomOtherPropertyType("");
             showToast({ tone: "success", title: "Custom milestone added" });
           } catch (err) {
             showToast({
@@ -209,7 +222,12 @@ function CustomerMilestonesPanel({ customer }: { customer: Customer }) {
         />
         <select
           value={customPropertyType}
-          onChange={(e) => setCustomPropertyType(e.target.value)}
+          onChange={(e) => {
+            setCustomPropertyType(e.target.value);
+            if (e.target.value !== "Other") {
+              setCustomOtherPropertyType("");
+            }
+          }}
           className="rounded-lg border border-[#C4EBF2] bg-[#F0FAFC] px-2 py-2 text-xs text-[#0B1F3D] outline-none focus:border-[#38B2D1]"
         >
           {PROPERTY_TYPES.map((t) => (
@@ -225,6 +243,15 @@ function CustomerMilestonesPanel({ customer }: { customer: Customer }) {
         >
           Add custom date
         </button>
+        {customPropertyType === "Other" ? (
+          <input
+            type="text"
+            placeholder="Specify custom property type"
+            value={customOtherPropertyType}
+            onChange={(e) => setCustomOtherPropertyType(e.target.value)}
+            className="rounded-lg border border-[#C4EBF2] bg-[#F0FAFC] px-2 py-2 text-xs text-[#0B1F3D] outline-none focus:border-[#38B2D1] sm:col-span-4"
+          />
+        ) : null}
       </form>
     </div>
   );
@@ -266,59 +293,78 @@ function CustomersPageContent() {
   }, [searchParams]);
 
   const saveCustomer = async () => {
-    const { birthday, closing_date, property_type, ...customerFields } = form;
+    const {
+      birthday,
+      closing_date,
+      property_type,
+      custom_property_type,
+      ...customerFields
+    } = form;
+
+    const trimmedBirthday = birthday.trim();
+    const trimmedClosingDate = closing_date.trim();
+    const finalPropertyType =
+      property_type === "Other"
+        ? custom_property_type.trim()
+        : property_type.trim();
+
+    if (!trimmedBirthday) {
+      throw new Error("Birthday is required");
+    }
+    if (!trimmedClosingDate) {
+      throw new Error("Property closing date is required");
+    }
+    if (!finalPropertyType) {
+      throw new Error(
+        property_type === "Other"
+          ? "Please specify the custom property type"
+          : "Property type is required"
+      );
+    }
+
     const result = await createCustomer.mutateAsync(customerFields);
     const customerId = result.customer.id;
 
-    const milestonePosts: Promise<unknown>[] = [];
-    if (birthday) {
-      milestonePosts.push(
-        apiClient<{ milestone: CustomerMilestone }>(
-          `/api/customers/${customerId}/milestones`,
-          {
-            method: "POST",
-            body: {
-              milestone_type: "birthday",
-              anchor_date: birthday,
-              recurs_annually: true,
-            },
-          }
-        )
-      );
-    }
-    if (closing_date) {
-      milestonePosts.push(
-        apiClient<{ milestone: CustomerMilestone }>(
-          `/api/customers/${customerId}/milestones`,
-          {
-            method: "POST",
-            body: {
-              milestone_type: "closing_anniversary",
-              anchor_date: closing_date,
-              property_type: property_type || "",
-              recurs_annually: true,
-            },
-          }
-        )
-      );
-      milestonePosts.push(
-        apiClient<{ milestone: CustomerMilestone }>(
-          `/api/customers/${customerId}/milestones`,
-          {
-            method: "POST",
-            body: {
-              milestone_type: "home_anniversary",
-              anchor_date: closing_date,
-              property_type: property_type || "",
-              recurs_annually: true,
-            },
-          }
-        ).catch(() => undefined)
-      );
-    }
+    const milestonePosts: Promise<unknown>[] = [
+      apiClient<{ milestone: CustomerMilestone }>(
+        `/api/customers/${customerId}/milestones`,
+        {
+          method: "POST",
+          body: {
+            milestone_type: "birthday",
+            anchor_date: trimmedBirthday,
+            recurs_annually: true,
+          },
+        }
+      ),
+      apiClient<{ milestone: CustomerMilestone }>(
+        `/api/customers/${customerId}/milestones`,
+        {
+          method: "POST",
+          body: {
+            milestone_type: "closing_anniversary",
+            anchor_date: trimmedClosingDate,
+            property_type: finalPropertyType,
+            recurs_annually: true,
+          },
+        }
+      ),
+      apiClient<{ milestone: CustomerMilestone }>(
+        `/api/customers/${customerId}/milestones`,
+        {
+          method: "POST",
+          body: {
+            milestone_type: "home_anniversary",
+            anchor_date: trimmedClosingDate,
+            property_type: finalPropertyType,
+            recurs_annually: true,
+          },
+        }
+      ).catch(() => undefined),
+    ];
 
     await Promise.all(milestonePosts);
-    return { birthday, closing_date };
+    return { birthday: trimmedBirthday, closing_date: trimmedClosingDate };
   };
 
   const onSubmit = async (
@@ -333,10 +379,7 @@ function CustomersPageContent() {
       showToast({
         tone: "success",
         title: "Customer saved",
-        description:
-          birthday || closing_date
-            ? "Milestones were stored for campaign occasions."
-            : undefined,
+        description: "Milestones were stored for campaign occasions.",
       });
       if (options?.startCampaign) {
         setStartCampaignOpen(true);
@@ -403,11 +446,14 @@ function CustomersPageContent() {
               ["province_or_state", "State / Province"],
               ["postal_or_zip", "Postal / ZIP"],
               ["country_code", "Country code"],
+              ["property_address", "Property address"],
             ] as const
           ).map(([key, label]) => (
             <label
               key={key}
-              className="space-y-1 text-xs font-semibold text-[#557393]"
+              className={`space-y-1 text-xs font-semibold text-[#557393] ${
+                key === "property_address" ? "sm:col-span-2" : ""
+              }`}
             >
               <span>{label}</span>
               <input
@@ -426,9 +472,10 @@ function CustomersPageContent() {
           ))}
 
           <label className="space-y-1 text-xs font-semibold text-[#557393]">
-            <span>Birthday (optional)</span>
+            <span>Birthday</span>
             <input
               type="date"
+              required
               value={form.birthday}
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, birthday: e.target.value }))
@@ -437,9 +484,10 @@ function CustomersPageContent() {
             />
           </label>
           <label className="space-y-1 text-xs font-semibold text-[#557393]">
-            <span>Property closing date (optional)</span>
+            <span>Property closing date</span>
             <input
               type="date"
+              required
               value={form.closing_date}
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, closing_date: e.target.value }))
@@ -448,21 +496,49 @@ function CustomersPageContent() {
             />
           </label>
           <label className="space-y-1 text-xs font-semibold text-[#557393] sm:col-span-2">
-            <span>Property type (optional)</span>
+            <span>Property type</span>
             <select
+              required
               value={form.property_type}
               onChange={(e) =>
-                setForm((prev) => ({ ...prev, property_type: e.target.value }))
+                setForm((prev) => ({
+                  ...prev,
+                  property_type: e.target.value,
+                  custom_property_type:
+                    e.target.value === "Other" ? prev.custom_property_type : "",
+                }))
               }
               className="w-full rounded-xl border border-[#C4EBF2] bg-[#F0FAFC] px-3 py-2 text-sm text-[#0B1F3D] outline-none focus:border-[#38B2D1] focus:bg-white"
             >
-              {PROPERTY_TYPES.map((t) => (
-                <option key={t || "none"} value={t}>
-                  {t || "Select property type"}
+              <option value="" disabled>
+                Select property type
+              </option>
+              {PROPERTY_TYPES.filter(Boolean).map((t) => (
+                <option key={t} value={t}>
+                  {t}
                 </option>
               ))}
             </select>
           </label>
+
+          {form.property_type === "Other" ? (
+            <label className="space-y-1 text-xs font-semibold text-[#557393] sm:col-span-2">
+              <span>Specify property type</span>
+              <input
+                type="text"
+                required
+                placeholder="Enter property type (e.g. Duplex, Mobile Home, Villa)"
+                value={form.custom_property_type}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    custom_property_type: e.target.value,
+                  }))
+                }
+                className="w-full rounded-xl border border-[#C4EBF2] bg-[#F0FAFC] px-3 py-2 text-sm text-[#0B1F3D] outline-none focus:border-[#38B2D1] focus:bg-white"
+              />
+            </label>
+          ) : null}
 
           <div className="flex flex-col gap-2 sm:col-span-2 sm:flex-row sm:items-center">
             <button
@@ -531,8 +607,15 @@ function CustomersPageContent() {
                       </button>
                     </td>
                     <td className="px-4 py-3 text-[#557393]">
-                      {c.address_line1}, {c.city}, {c.province_or_state}{" "}
-                      {c.postal_or_zip}
+                      <div>
+                        {c.address_line1}, {c.city}, {c.province_or_state}{" "}
+                        {c.postal_or_zip}
+                      </div>
+                      {c.property_address ? (
+                        <div className="mt-0.5 text-xs text-[#8A9EA8]">
+                          Property: {c.property_address}
+                        </div>
+                      ) : null}
                     </td>
                     <td className="px-4 py-3 text-[#557393]">
                       {c.email || c.phone || "—"}

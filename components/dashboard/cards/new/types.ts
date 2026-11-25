@@ -15,6 +15,7 @@ export const EMPTY_NEW_CUSTOMER: NewCustomerFormState = {
   province_or_state: "",
   postal_or_zip: "",
   country_code: "US",
+  property_address: "",
 };
 
 export const NEW_CUSTOMER_FIELDS = [
@@ -28,6 +29,7 @@ export const NEW_CUSTOMER_FIELDS = [
   ["province_or_state", "State / Province"],
   ["postal_or_zip", "Postal / ZIP"],
   ["country_code", "Country code"],
+  ["property_address", "Property address"],
 ] as const satisfies ReadonlyArray<
   readonly [keyof NewCustomerFormState, string]
 >;

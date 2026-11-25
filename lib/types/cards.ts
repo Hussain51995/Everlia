@@ -89,6 +89,7 @@ export type Customer = {
   province_or_state: string;
   postal_or_zip: string;
   country_code: string;
+  property_address: string;
   metadata?: Record<string, unknown>;
   created_at?: string;
   updated_at?: string;

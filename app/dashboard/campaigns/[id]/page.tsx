@@ -792,7 +792,7 @@ function MailingsTable({
                   ) : null}
                 </td>
                 <td className="py-2">
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-nowrap items-center gap-2 whitespace-nowrap">
                     {hasArtwork ? (
                       <>
                         <button
