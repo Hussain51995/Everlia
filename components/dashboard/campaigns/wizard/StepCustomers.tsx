@@ -59,7 +59,7 @@ export function StepCustomers() {
     const q = query.trim().toLowerCase();
     return (customers ?? []).filter((c) => {
       if (!q) return true;
-      const hay = `${c.first_name} ${c.last_name} ${c.email ?? ""} ${c.city}`.toLowerCase();
+      const hay = `${c.first_name} ${c.last_name} ${c.email ?? ""} ${c.city} ${c.property_address ?? ""}`.toLowerCase();
       return hay.includes(q);
     });
   }, [customers, query]);
@@ -169,11 +169,19 @@ export function StepCustomers() {
                   {[customer.city, customer.province_or_state]
                     .filter(Boolean)
                     .join(", ") || "No city"}
+                  {customer.property_address
+                    ? ` · Property: ${customer.property_address}`
+                    : ""}
                 </p>
                 <div className="mt-1 flex flex-wrap gap-1.5">
                   {!hasAddress ? (
                     <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold uppercase text-rose-700">
                       Missing address
+                    </span>
+                  ) : null}
+                  {!customer.property_address ? (
+                    <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold uppercase text-rose-700">
+                      Missing property address
                     </span>
                   ) : null}
                   {!hasBirthday ? (

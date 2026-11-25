@@ -93,6 +93,27 @@ export function ChevronDownIcon(props: IconProps) {
 export function ChevronRightIcon(props: IconProps) {
   return <svg {...base(props)}><polyline points="9 18 15 12 9 6"/></svg>;
 }
+export function ChevronLeftIcon(props: IconProps) {
+  return <svg {...base(props)}><polyline points="15 18 9 12 15 6"/></svg>;
+}
+export function PanelLeftCloseIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M9 4v16" />
+      <path d="m15 9-3 3 3 3" />
+    </svg>
+  );
+}
+export function PanelLeftOpenIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M9 4v16" />
+      <path d="m13 9 3 3-3 3" />
+    </svg>
+  );
+}
 export function RefreshCwIcon(props: IconProps) {
   return <svg {...base(props)}><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>;
 }

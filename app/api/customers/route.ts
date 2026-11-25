@@ -72,6 +72,7 @@ export async function POST(request: Request) {
         province_or_state: input.province_or_state,
         postal_or_zip: input.postal_or_zip,
         country_code: (input.country_code || "US").toUpperCase(),
+        property_address: input.property_address,
       })
       .select("*")
       .single();
