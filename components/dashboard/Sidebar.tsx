@@ -115,6 +115,12 @@ export function Sidebar({
             badge: "Admin" as string | null,
           },
           {
+            name: "Property Intelligence",
+            href: "/dashboard/admin/property-intelligence",
+            icon: ChartIcon,
+            badge: "Admin" as string | null,
+          },
+          {
             name: "RentCast Tester",
             href: "/dashboard/admin/rentcast-tester",
             icon: BuildingIcon,
