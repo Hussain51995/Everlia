@@ -22,6 +22,7 @@ export {
   usePropertyIntelligenceSettings,
   usePropertyIntelligenceProviders,
   useUpdatePropertyIntelligenceSettings,
+  usePropertyIntelligenceRedisHealth,
   usePropertyIntelligenceCache,
   useInvalidatePropertyIntelligenceCache,
   usePropertyIntelligenceUsage,

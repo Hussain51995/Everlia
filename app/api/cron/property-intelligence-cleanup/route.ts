@@ -1,6 +1,4 @@
 import { apiError, apiSuccess } from "@/lib/api/response";
-import { createCacheCleanupService } from "@/lib/property-intelligence/cache/cleanup";
-import { SupabasePropertyCacheRepository } from "@/lib/property-intelligence/cache/cache-repository";
 import { SupabasePropertyFetchLockRepository } from "@/lib/property-intelligence/cache/fetch-locks";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -32,21 +30,28 @@ export async function POST(request: Request) {
 
     const url = new URL(request.url);
     const batchSize = Number(url.searchParams.get("batchSize") ?? "100");
+    const batch = Number.isFinite(batchSize) ? batchSize : 100;
 
     const admin = createAdminClient();
-    const cleanup = createCacheCleanupService({
-      cacheRepo: new SupabasePropertyCacheRepository(admin),
-      lockRepo: new SupabasePropertyFetchLockRepository(admin),
-      config: {
-        batchSize: Number.isFinite(batchSize) ? batchSize : 100,
-      },
-    });
+    const lockRepo = new SupabasePropertyFetchLockRepository(admin);
+    const ranAt = new Date().toISOString();
+    const locksOlderThan = new Date(
+      Date.now() - 24 * 60 * 60 * 1000
+    ).toISOString();
 
-    const report = await cleanup.run();
+    const locksExpired = await lockRepo.expireStaleLocks(batch);
+    const terminalLocksDeleted = await lockRepo.deleteTerminalLocks(
+      locksOlderThan,
+      batch
+    );
 
     return apiSuccess({
-      ...report,
-      note: "Property Intelligence cache cleanup completed. No provider API calls were made.",
+      ranAt,
+      locksExpired,
+      terminalLocksDeleted,
+      payloadCleanup: "skipped_redis_native_ttl",
+      triggeredProviderFetch: false,
+      note: "Property Intelligence lock cleanup completed. Payload expiry uses Redis TTL. No provider API calls were made.",
     });
   } catch (error) {
     console.error("[cron/property-intelligence-cleanup]", error);

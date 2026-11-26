@@ -164,6 +164,7 @@ export function usePropertyInsights(input: {
               error: null,
               cache: {
                 hit: true,
+                serverCacheHit: false,
                 fetchedAt: hit.record.providerFetchedAt,
                 expiresAt: hit.record.browserExpiresAt,
                 remainingTtlSeconds: hit.remainingTtlSeconds,
@@ -240,7 +241,7 @@ export function usePropertyInsights(input: {
               bi.cachePolicy.categories[category].categoryConfigVersion,
             invalidationVersion: bi.invalidationVersion,
             providerFetchedAt: result.cache.fetchedAt,
-            databaseExpiresAt: result.cache.expiresAt,
+            sourceCacheExpiresAt: result.cache.expiresAt,
             browserTtlSeconds:
               bi.cachePolicy.categories[category].browserTtlSeconds,
             responseContextValidUntil: bi.responseContextValidUntil,

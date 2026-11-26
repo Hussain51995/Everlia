@@ -6,7 +6,7 @@ export type PriceBarItem = {
   id: string;
   label: string;
   amount: number;
-  currency?: string;
+  currency?: "USD";
   emphasize?: boolean;
   tone?: "teal" | "navy" | "green" | "muted";
 };

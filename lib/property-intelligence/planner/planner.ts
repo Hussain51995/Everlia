@@ -85,9 +85,9 @@ export class PropertyIntelligenceRequestPlanner {
         providerId: effectiveProviderId,
         key: cacheKey,
         policy: buildCategoryCachePolicy({
-          databaseTtlSeconds: settings.databaseTtlSeconds,
-          maxDatabaseTtlSeconds:
-            providerCapability.retention?.maxDatabaseTtlSeconds ?? null,
+          redisTtlSeconds: settings.redisTtlSeconds,
+          maxRedisTtlSeconds:
+            providerCapability.retention?.maxRedisTtlSeconds ?? null,
           categoryConfigVersion: settings.configVersion,
           permitStaleDisplay: false,
         }),
@@ -132,6 +132,21 @@ export class PropertyIntelligenceRequestPlanner {
           cacheKey: state.cacheKey,
         };
         cacheHits.push(state.category);
+      } else if (
+        hit?.status === "miss" &&
+        (hit.reason === "cache_unavailable" || hit.reason === "invalid_payload")
+      ) {
+        categoryStates[i] = {
+          category: state.category,
+          disposition: "cache_unavailable",
+          providerId: state.providerId,
+          settings: state.settings,
+          cacheKey: state.cacheKey,
+          message:
+            hit.reason === "cache_unavailable"
+              ? "Property cache temporarily unavailable"
+              : "Cached property data was invalid",
+        };
       } else {
         const reason =
           hit?.status === "miss" && hit.reason === "expired"

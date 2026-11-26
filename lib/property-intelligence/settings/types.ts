@@ -18,7 +18,7 @@ export type PropertyIntelligenceCategorySettings = {
   enabled: boolean;
   providerId: PropertyProviderId;
   browserTtlSeconds: number;
-  databaseTtlSeconds: number;
+  redisTtlSeconds: number;
   configVersion: number;
   searchRadiusMiles: number | null;
   listingLimit: number | null;

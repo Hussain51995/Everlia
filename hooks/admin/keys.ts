@@ -17,4 +17,6 @@ export const adminKeys = {
     [...adminKeys.all, "property-intelligence", "cache", q ?? ""] as const,
   propertyIntelligenceUsage: () =>
     [...adminKeys.all, "property-intelligence", "usage"] as const,
+  propertyIntelligenceRedisStatus: () =>
+    [...adminKeys.all, "property-intelligence", "redis-status"] as const,
 };

@@ -2,6 +2,15 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { PROPERTY_DATA_CATEGORIES } from "@/lib/types/property-intelligence";
 import type { PropertyDataCategory } from "@/lib/types/property-intelligence";
 import {
+  assertAllowedBrowserTtlSeconds,
+  assertAllowedRedisTtlSeconds,
+  coerceBrowserTtlSeconds,
+  coerceRedisTtlSeconds,
+  DEFAULT_BROWSER_TTL_SECONDS,
+  DEFAULT_REDIS_TTL_SECONDS,
+  getRecommendedTtlDefaults,
+} from "@/lib/property-intelligence/settings/ttl-policy";
+import {
   DEFAULT_GLOBAL_SETTINGS,
   type PropertyIntelligenceCategorySettings,
   type PropertyIntelligenceGlobalSettings,
@@ -19,7 +28,7 @@ export type CategorySettingsPatch = {
   enabled?: boolean;
   providerId?: PropertyIntelligenceCategorySettings["providerId"];
   browserTtlSeconds?: number;
-  databaseTtlSeconds?: number;
+  redisTtlSeconds?: number;
   searchRadiusMiles?: number | null;
   listingLimit?: number | null;
   queryFilters?: Record<string, unknown>;
@@ -27,6 +36,8 @@ export type CategorySettingsPatch = {
 
 export interface PropertyIntelligenceSettingsRepository {
   getResolvedConfig(): Promise<PropertyIntelligenceResolvedConfig>;
+  bumpConfigVersion?(): Promise<number>;
+  restoreRecommendedDefaults?(): Promise<PropertyIntelligenceResolvedConfig>;
 }
 
 const DEFAULT_CATEGORY_SEED: Record<
@@ -36,8 +47,8 @@ const DEFAULT_CATEGORY_SEED: Record<
   property_details: {
     enabled: true,
     providerId: "rentcast",
-    browserTtlSeconds: 604800,
-    databaseTtlSeconds: 15552000,
+    browserTtlSeconds: DEFAULT_BROWSER_TTL_SECONDS.property_details,
+    redisTtlSeconds: DEFAULT_REDIS_TTL_SECONDS.property_details,
     configVersion: 1,
     searchRadiusMiles: null,
     listingLimit: null,
@@ -46,8 +57,8 @@ const DEFAULT_CATEGORY_SEED: Record<
   property_valuation: {
     enabled: true,
     providerId: "rentcast",
-    browserTtlSeconds: 86400,
-    databaseTtlSeconds: 2592000,
+    browserTtlSeconds: DEFAULT_BROWSER_TTL_SECONDS.property_valuation,
+    redisTtlSeconds: DEFAULT_REDIS_TTL_SECONDS.property_valuation,
     configVersion: 1,
     searchRadiusMiles: null,
     listingLimit: null,
@@ -56,8 +67,8 @@ const DEFAULT_CATEGORY_SEED: Record<
   nearby_houses: {
     enabled: true,
     providerId: "rentcast",
-    browserTtlSeconds: 21600,
-    databaseTtlSeconds: 604800,
+    browserTtlSeconds: DEFAULT_BROWSER_TTL_SECONDS.nearby_houses,
+    redisTtlSeconds: DEFAULT_REDIS_TTL_SECONDS.nearby_houses,
     configVersion: 1,
     searchRadiusMiles: 1,
     listingLimit: 10,
@@ -66,8 +77,8 @@ const DEFAULT_CATEGORY_SEED: Record<
   nearby_land: {
     enabled: true,
     providerId: "rentcast",
-    browserTtlSeconds: 21600,
-    databaseTtlSeconds: 604800,
+    browserTtlSeconds: DEFAULT_BROWSER_TTL_SECONDS.nearby_land,
+    redisTtlSeconds: DEFAULT_REDIS_TTL_SECONDS.nearby_land,
     configVersion: 1,
     searchRadiusMiles: 5,
     listingLimit: 10,
@@ -76,8 +87,8 @@ const DEFAULT_CATEGORY_SEED: Record<
   market_statistics: {
     enabled: true,
     providerId: "rentcast",
-    browserTtlSeconds: 86400,
-    databaseTtlSeconds: 2592000,
+    browserTtlSeconds: DEFAULT_BROWSER_TTL_SECONDS.market_statistics,
+    redisTtlSeconds: DEFAULT_REDIS_TTL_SECONDS.market_statistics,
     configVersion: 1,
     searchRadiusMiles: null,
     listingLimit: null,
@@ -147,22 +158,36 @@ export class MemoryPropertyIntelligenceSettingsRepository
 
   setCategoryTtl(
     category: PropertyDataCategory,
-    input: { browserTtlSeconds: number; databaseTtlSeconds: number }
+    input: { browserTtlSeconds: number; redisTtlSeconds: number }
   ) {
-    if (input.browserTtlSeconds > input.databaseTtlSeconds) {
-      throw new Error("browser TTL must not exceed database TTL");
-    }
-    if (input.browserTtlSeconds < 1 || input.databaseTtlSeconds < 1) {
-      throw new Error("TTL values must be >= 1 second");
+    const browserTtl = assertAllowedBrowserTtlSeconds(input.browserTtlSeconds);
+    const redisTtl = assertAllowedRedisTtlSeconds(input.redisTtlSeconds);
+    if (browserTtl > redisTtl) {
+      throw new Error("browser TTL must not exceed Redis TTL");
     }
     const current = this.categories[category];
     this.categories[category] = {
       ...current,
-      browserTtlSeconds: input.browserTtlSeconds,
-      databaseTtlSeconds: input.databaseTtlSeconds,
+      browserTtlSeconds: browserTtl,
+      redisTtlSeconds: redisTtl,
       configVersion: current.configVersion + 1,
     };
     this.bumpGlobalConfigVersion();
+  }
+
+  async restoreRecommendedDefaults(): Promise<PropertyIntelligenceResolvedConfig> {
+    for (const category of PROPERTY_DATA_CATEGORIES) {
+      const defaults = getRecommendedTtlDefaults(category);
+      const current = this.categories[category];
+      this.categories[category] = {
+        ...current,
+        browserTtlSeconds: defaults.browserTtlSeconds,
+        redisTtlSeconds: defaults.redisTtlSeconds,
+        configVersion: current.configVersion + 1,
+      };
+    }
+    this.bumpGlobalConfigVersion();
+    return this.getResolvedConfig();
   }
 
   bumpGlobalConfigVersion() {
@@ -170,6 +195,11 @@ export class MemoryPropertyIntelligenceSettingsRepository
       ...this.global,
       configVersion: this.global.configVersion + 1,
     };
+  }
+
+  async bumpConfigVersion(): Promise<number> {
+    this.bumpGlobalConfigVersion();
+    return this.global.configVersion;
   }
 
   async updateGlobal(
@@ -210,10 +240,14 @@ export class MemoryPropertyIntelligenceSettingsRepository
     if (patch.enabled != null) next.enabled = patch.enabled;
     if (patch.providerId != null) next.providerId = patch.providerId;
     if (patch.browserTtlSeconds != null) {
-      next.browserTtlSeconds = Math.floor(patch.browserTtlSeconds);
+      next.browserTtlSeconds = assertAllowedBrowserTtlSeconds(
+        patch.browserTtlSeconds
+      );
     }
-    if (patch.databaseTtlSeconds != null) {
-      next.databaseTtlSeconds = Math.floor(patch.databaseTtlSeconds);
+    if (patch.redisTtlSeconds != null) {
+      next.redisTtlSeconds = assertAllowedRedisTtlSeconds(
+        patch.redisTtlSeconds
+      );
     }
     if (patch.searchRadiusMiles !== undefined) {
       next.searchRadiusMiles = patch.searchRadiusMiles;
@@ -225,11 +259,10 @@ export class MemoryPropertyIntelligenceSettingsRepository
       next.queryFilters = patch.queryFilters;
     }
 
-    if (next.browserTtlSeconds > next.databaseTtlSeconds) {
-      throw new Error("browser TTL must not exceed database TTL");
-    }
-    if (next.browserTtlSeconds < 1 || next.databaseTtlSeconds < 1) {
-      throw new Error("TTL values must be >= 1 second");
+    assertAllowedBrowserTtlSeconds(next.browserTtlSeconds);
+    assertAllowedRedisTtlSeconds(next.redisTtlSeconds);
+    if (next.browserTtlSeconds > next.redisTtlSeconds) {
+      throw new Error("browser TTL must not exceed Redis TTL");
     }
 
     next.configVersion = current.configVersion + 1;
@@ -278,8 +311,16 @@ export class SupabasePropertyIntelligenceSettingsRepository
         category,
         enabled: Boolean(row.enabled),
         providerId: String(row.provider_id),
-        browserTtlSeconds: Number(row.browser_ttl_seconds),
-        databaseTtlSeconds: Number(row.database_ttl_seconds),
+        browserTtlSeconds: coerceBrowserTtlSeconds(
+          Number(row.browser_ttl_seconds)
+        ),
+        redisTtlSeconds: coerceRedisTtlSeconds(
+          Number(
+            (row as { redis_ttl_seconds?: unknown; database_ttl_seconds?: unknown })
+              .redis_ttl_seconds ??
+              (row as { database_ttl_seconds?: unknown }).database_ttl_seconds
+          )
+        ),
         configVersion: Number(row.config_version ?? 1),
         searchRadiusMiles:
           row.search_radius_miles === null || row.search_radius_miles === undefined
@@ -350,24 +391,23 @@ export class SupabasePropertyIntelligenceSettingsRepository
   ): Promise<PropertyIntelligenceCategorySettings> {
     const before = await this.getResolvedConfig();
     const current = before.categories[category];
-    const browserTtl =
-      patch.browserTtlSeconds ?? current.browserTtlSeconds;
-    const databaseTtl =
-      patch.databaseTtlSeconds ?? current.databaseTtlSeconds;
+    const browserTtl = assertAllowedBrowserTtlSeconds(
+      patch.browserTtlSeconds ?? current.browserTtlSeconds
+    );
+    const redisTtl = assertAllowedRedisTtlSeconds(
+      patch.redisTtlSeconds ?? current.redisTtlSeconds
+    );
 
-    if (browserTtl > databaseTtl) {
-      throw new Error("browser TTL must not exceed database TTL");
-    }
-    if (browserTtl < 1 || databaseTtl < 1) {
-      throw new Error("TTL values must be >= 1 second");
+    if (browserTtl > redisTtl) {
+      throw new Error("browser TTL must not exceed Redis TTL");
     }
 
     const row = {
       category,
       enabled: patch.enabled ?? current.enabled,
       provider_id: patch.providerId ?? current.providerId,
-      browser_ttl_seconds: Math.floor(browserTtl),
-      database_ttl_seconds: Math.floor(databaseTtl),
+      browser_ttl_seconds: browserTtl,
+      redis_ttl_seconds: redisTtl,
       config_version: current.configVersion + 1,
       search_radius_miles:
         patch.searchRadiusMiles !== undefined
@@ -398,8 +438,16 @@ export class SupabasePropertyIntelligenceSettingsRepository
       category,
       enabled: Boolean(data.enabled),
       providerId: String(data.provider_id),
-      browserTtlSeconds: Number(data.browser_ttl_seconds),
-      databaseTtlSeconds: Number(data.database_ttl_seconds),
+      browserTtlSeconds: coerceBrowserTtlSeconds(
+        Number(data.browser_ttl_seconds)
+      ),
+      redisTtlSeconds: coerceRedisTtlSeconds(
+        Number(
+          (data as { redis_ttl_seconds?: unknown; database_ttl_seconds?: unknown })
+            .redis_ttl_seconds ??
+            (data as { database_ttl_seconds?: unknown }).database_ttl_seconds
+        )
+      ),
       configVersion: Number(data.config_version ?? 1),
       searchRadiusMiles:
         data.search_radius_miles == null
@@ -409,5 +457,29 @@ export class SupabasePropertyIntelligenceSettingsRepository
         data.listing_limit == null ? null : Number(data.listing_limit),
       queryFilters: (data.query_filters as Record<string, unknown>) ?? {},
     };
+  }
+
+  async bumpConfigVersion(): Promise<number> {
+    const current = await this.getResolvedConfig();
+    const next = current.global.configVersion + 1;
+    const { error } = await this.client
+      .from("property_intelligence_settings")
+      .update({ config_version: next })
+      .eq("singleton", true);
+    if (error) throw new Error(error.message);
+    return next;
+  }
+
+  async restoreRecommendedDefaults(): Promise<PropertyIntelligenceResolvedConfig> {
+    const current = await this.getResolvedConfig();
+    for (const category of PROPERTY_DATA_CATEGORIES) {
+      const defaults = getRecommendedTtlDefaults(category);
+      await this.updateCategory(category, {
+        browserTtlSeconds: defaults.browserTtlSeconds,
+        redisTtlSeconds: defaults.redisTtlSeconds,
+      });
+    }
+    void current;
+    return this.getResolvedConfig();
   }
 }

@@ -49,6 +49,14 @@ export type CategoryPlanState =
     }
   | {
       category: PropertyDataCategory;
+      disposition: "cache_unavailable";
+      providerId: PropertyProviderId;
+      settings: PropertyIntelligenceCategorySettings;
+      cacheKey: BuiltCacheKey;
+      message: string;
+    }
+  | {
+      category: PropertyDataCategory;
       disposition: "disabled";
     }
   | {

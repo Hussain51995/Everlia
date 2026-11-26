@@ -72,7 +72,7 @@ export class AltavistaPropertyDataProvider implements PropertyDataProvider {
         mayAlsoProvide: [],
         requestCostUnits: category === "property_valuation" ? 2 : 1,
         retention: {
-          maxDatabaseTtlSeconds: ok ? 7 * 24 * 60 * 60 : null,
+          maxRedisTtlSeconds: ok ? 7 * 24 * 60 * 60 : null,
           notes: ok
             ? "Altavista fixture retention capped at 7 days for replacement tests"
             : null,

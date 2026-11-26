@@ -4,10 +4,8 @@ import {
   providerSupportsCategory,
 } from "@/lib/property-intelligence/admin/provider-catalog";
 import { MemoryPropertyIntelligenceSettingsRepository } from "@/lib/property-intelligence/settings/repository";
-import { MemoryPropertyCacheRepository } from "@/lib/property-intelligence/cache/cache-repository";
-import { MemoryPropertyIdentityRepository } from "@/lib/property-intelligence/cache/identity-repository";
-import { createPropertyCacheService } from "@/lib/property-intelligence/cache/cache-service";
 import { createCacheInvalidationService } from "@/lib/property-intelligence/cache/invalidation";
+import { createTestPropertyCacheService } from "@/lib/property-intelligence/cache/test-cache";
 import {
   propertyIntelligenceCategorySettingsPatchSchema,
   propertyIntelligenceGlobalSettingsPatchSchema,
@@ -69,10 +67,44 @@ describe("Property Intelligence admin — settings validation", () => {
   it("rejects browser TTL greater than database TTL", () => {
     const parsed = propertyIntelligenceCategorySettingsPatchSchema.safeParse({
       category: "property_details",
-      browserTtlSeconds: 10_000,
-      databaseTtlSeconds: 100,
+      browserTtlSeconds: 10800,
+      redisTtlSeconds: 100,
     });
     expect(parsed.success).toBe(false);
+  });
+
+  it("rejects browser TTL values outside the allowlist", () => {
+    const parsed = propertyIntelligenceCategorySettingsPatchSchema.safeParse({
+      category: "property_details",
+      browserTtlSeconds: 86400,
+      redisTtlSeconds: 2592000,
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects Redis TTL values outside the allowlist", () => {
+    const parsed = propertyIntelligenceCategorySettingsPatchSchema.safeParse({
+      category: "property_details",
+      browserTtlSeconds: 10800,
+      redisTtlSeconds: 12345,
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("accepts every browser and Redis allowlist pair when browser ≤ redis", () => {
+    for (const browser of [1800, 3600, 5400, 7200, 9000, 10800] as const) {
+      for (const redis of [86400, 259200, 604800, 2592000, 7776000] as const) {
+        if (browser > redis) continue;
+        const parsed = propertyIntelligenceCategorySettingsPatchSchema.safeParse(
+          {
+            category: "nearby_houses",
+            browserTtlSeconds: browser,
+            redisTtlSeconds: redis,
+          }
+        );
+        expect(parsed.success).toBe(true);
+      }
+    }
   });
 
   it("rejects unimplemented provider ids at catalog gate (Zod allows ids; API validates)", () => {
@@ -121,9 +153,24 @@ describe("Property Intelligence admin — settings repository", () => {
     await expect(
       repo.updateCategory("nearby_houses", {
         browserTtlSeconds: 999_999,
-        databaseTtlSeconds: 100,
+        redisTtlSeconds: 100,
       })
     ).rejects.toThrow(/browser TTL/i);
+  });
+
+  it("restores recommended TTL defaults without provider fetches", async () => {
+    const repo = new MemoryPropertyIntelligenceSettingsRepository();
+    await repo.updateCategory("property_details", {
+      browserTtlSeconds: 1800,
+      redisTtlSeconds: 86400,
+    });
+    const restored = await repo.restoreRecommendedDefaults();
+    expect(restored.categories.property_details.browserTtlSeconds).toBe(10800);
+    expect(restored.categories.property_details.redisTtlSeconds).toBe(
+      7776000
+    );
+    expect(restored.categories.nearby_houses.redisTtlSeconds).toBe(259200);
+    expect(restored.categories.nearby_land.redisTtlSeconds).toBe(604800);
   });
 
   it("applies budget changes without fabricating usage", async () => {
@@ -136,21 +183,17 @@ describe("Property Intelligence admin — settings repository", () => {
 
 describe("Property Intelligence admin — cache invalidation", () => {
   it("soft-invalidates without triggering provider fetches", async () => {
-    const cacheRepo = new MemoryPropertyCacheRepository();
-    const cacheService = createPropertyCacheService(
-      cacheRepo,
-      new MemoryPropertyIdentityRepository()
-    );
+    const { cache: cacheService } = createTestPropertyCacheService();
     const key = cacheService.detailsKey("mock", "PROP|1");
     await cacheService.store({
       providerId: "mock",
       category: "property_details",
       key,
       payload: { x: 1 },
-      ttl: { databaseTtlSeconds: 3600 },
+      ttl: { redisTtlSeconds: 3600 },
     });
 
-    const service = createCacheInvalidationService(cacheRepo);
+    const service = createCacheInvalidationService(cacheService);
     const result = await service.invalidate({
       scope: "property",
       normalizedIdentityKey: "PROP|1",
@@ -198,8 +241,12 @@ describe("Property Intelligence admin — empty usage shape", () => {
         byProvider: {},
         byOperation: {},
       },
+      cacheMetrics: {
+        redisCacheHitRate: { available: false, note: "not rolled up" },
+        browserCacheHits: { available: false, note: "sampled only" },
+      },
       measuredServerSide: {
-        databaseCacheHitRate: { available: false },
+        serverCacheHitRate: { available: false },
       },
       notMeasuredServerSide: {
         browserCacheHitRate: { available: false },
@@ -208,11 +255,24 @@ describe("Property Intelligence admin — empty usage shape", () => {
     };
 
     expect(empty.applicationLocal.unitsConsumed).toBe(0);
-    expect(empty.measuredServerSide.databaseCacheHitRate.available).toBe(false);
+    expect(empty.cacheMetrics.redisCacheHitRate.available).toBe(false);
+    expect(empty.measuredServerSide.serverCacheHitRate.available).toBe(false);
     expect(
       empty.notMeasuredServerSide.verifiedProviderAccountUsage.available
     ).toBe(false);
     expect(PROPERTY_DATA_CATEGORIES).not.toContain("schools" as never);
+  });
+});
+
+describe("Property Intelligence admin — Redis status helper", () => {
+  it("reports not_configured without credentials and never exposes secrets", async () => {
+    const { getRedisConfigStatus } = await import(
+      "@/lib/property-intelligence/admin/redis-status"
+    );
+    const status = getRedisConfigStatus({} as NodeJS.ProcessEnv);
+    expect(status.infrastructure).toBe("Upstash Redis");
+    expect(status.status).toBe("not_configured");
+    expect(JSON.stringify(status)).not.toMatch(/token|password|secret/i);
   });
 });
 

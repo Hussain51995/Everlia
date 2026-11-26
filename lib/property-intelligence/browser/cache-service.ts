@@ -1,6 +1,8 @@
 import {
   buildWriteTimestamps,
   isBrowserRecordFresh,
+  legacyBrowserEntryExceedsMaxTtl,
+  normalizeBrowserCacheRecord,
   remainingBrowserTtlSeconds,
 } from "@/lib/property-intelligence/browser/policy";
 import {
@@ -15,10 +17,12 @@ import {
   type BrowserCachePolicySnapshot,
   type BrowserCacheRecord,
   type BrowserCacheWriteInput,
+  type LegacyBrowserCacheRecordV1,
   type ResponseContextId,
 } from "@/lib/property-intelligence/browser/types";
 import type { PropertyDataCategory } from "@/lib/types/property-intelligence";
 import type { BrowserCacheTelemetry } from "@/lib/property-intelligence/browser/telemetry";
+import { coerceBrowserTtlSeconds } from "@/lib/property-intelligence/browser/ttl";
 
 export type BrowserCacheServiceOptions = {
   storage: BrowserCacheStorage;
@@ -62,7 +66,8 @@ export class PropertyBrowserCacheService {
 
     try {
       const key = browserCacheStorageKey(parts);
-      const record = await this.storage.get(key);
+      const raw = await this.storage.get(key);
+      const record = await this.hydrateRecord(key, raw);
       return this.evaluate(record, parts, expected);
     } catch (err) {
       this.telemetry?.recordMiss("storage_unavailable");
@@ -105,10 +110,8 @@ export class PropertyBrowserCacheService {
           invalidationVersion: expected?.invalidationVersion,
           propertyIdentityKey: expected?.propertyIdentityKey,
         };
-        results.set(
-          parts.category,
-          this.evaluate(rows.get(key) ?? null, parts, expectedForCat)
-        );
+        const record = await this.hydrateRecord(key, rows.get(key) ?? null);
+        results.set(parts.category, this.evaluate(record, parts, expectedForCat));
       }
     } catch {
       for (const parts of partsList) {
@@ -125,7 +128,10 @@ export class PropertyBrowserCacheService {
   async set(input: BrowserCacheWriteInput): Promise<BrowserCacheRecord | null> {
     if (!this.browserCachingEnabled) return null;
 
-    const timestamps = buildWriteTimestamps(input);
+    const timestamps = buildWriteTimestamps({
+      ...input,
+      browserTtlSeconds: coerceBrowserTtlSeconds(input.browserTtlSeconds),
+    });
     if (!isBrowserRecordFresh(timestamps.browserExpiresAt, input.now ?? this.now())) {
       return null;
     }
@@ -146,7 +152,7 @@ export class PropertyBrowserCacheService {
       categoryConfigVersion: input.categoryConfigVersion,
       invalidationVersion: input.invalidationVersion,
       providerFetchedAt: input.providerFetchedAt,
-      databaseExpiresAt: input.databaseExpiresAt,
+      sourceCacheExpiresAt: input.sourceCacheExpiresAt,
       browserExpiresAt: timestamps.browserExpiresAt,
       data: safeData,
       writtenAt: timestamps.writtenAt,
@@ -163,7 +169,6 @@ export class PropertyBrowserCacheService {
       await this.storage.set(key, record);
       return record;
     } catch (err) {
-      // Quota / IDB failures — continue with server cache only.
       if (err instanceof BrowserStorageError && err.code === "quota_exceeded") {
         try {
           await this.cleanupExpired({ limit: 50 });
@@ -204,8 +209,9 @@ export class PropertyBrowserCacheService {
     try {
       const keys = await this.storage.listKeys(limit);
       for (const key of keys) {
-        const row = await this.storage.get(key);
-        if (row && row.schemaVersion !== currentSchemaVersion) {
+        const raw = await this.storage.get(key);
+        const row = normalizeBrowserCacheRecord(raw);
+        if (!row || row.schemaVersion !== currentSchemaVersion) {
           await this.storage.delete(key);
           removed += 1;
         }
@@ -216,6 +222,63 @@ export class PropertyBrowserCacheService {
     return removed;
   }
 
+  async migrateLegacyEntries(options?: {
+    limit?: number;
+    now?: Date;
+  }): Promise<{ scanned: number; removed: number; rewritten: number }> {
+    const limit = options?.limit ?? 200;
+    const now = options?.now ?? this.now();
+    let scanned = 0;
+    let removed = 0;
+    let rewritten = 0;
+
+    try {
+      const keys = await this.storage.listKeys(limit);
+      for (const key of keys) {
+        scanned += 1;
+        const raw = (await this.storage.get(key)) as
+          | LegacyBrowserCacheRecordV1
+          | BrowserCacheRecord
+          | null;
+        if (!raw) continue;
+
+        const rawRecord = raw as BrowserCacheRecord & LegacyBrowserCacheRecordV1;
+        const hadLegacyField = Boolean(
+          rawRecord.databaseExpiresAt && !rawRecord.sourceCacheExpiresAt
+        );
+        const exceededMax = legacyBrowserEntryExceedsMaxTtl({
+          writtenAt: rawRecord.writtenAt,
+          browserExpiresAt: rawRecord.browserExpiresAt,
+        });
+
+        const normalized = normalizeBrowserCacheRecord(raw);
+        if (!normalized || !isBrowserRecordFresh(normalized.browserExpiresAt, now)) {
+          await this.storage.delete(key);
+          removed += 1;
+          continue;
+        }
+
+        if (
+          hadLegacyField ||
+          exceededMax ||
+          normalized.schemaVersion !== BROWSER_CACHE_SCHEMA_VERSION ||
+          normalized.browserExpiresAt !== rawRecord.browserExpiresAt
+        ) {
+          const next: BrowserCacheRecord = {
+            ...normalized,
+            schemaVersion: BROWSER_CACHE_SCHEMA_VERSION,
+          };
+          await this.storage.set(key, next);
+          rewritten += 1;
+        }
+      }
+    } catch {
+      return { scanned, removed, rewritten };
+    }
+
+    return { scanned, removed, rewritten };
+  }
+
   async cleanupExpired(options?: { limit?: number; now?: Date }): Promise<number> {
     const limit = options?.limit ?? 100;
     const now = options?.now ?? this.now();
@@ -224,8 +287,15 @@ export class PropertyBrowserCacheService {
       const keys = await this.storage.listKeys(limit * 2);
       for (const key of keys) {
         if (removed >= limit) break;
-        const row = await this.storage.get(key);
-        if (!row) continue;
+        const raw = await this.storage.get(key);
+        const row = normalizeBrowserCacheRecord(raw);
+        if (!row) {
+          if (raw) {
+            await this.storage.delete(key);
+            removed += 1;
+          }
+          continue;
+        }
         if (!isBrowserRecordFresh(row.browserExpiresAt, now)) {
           await this.storage.delete(key);
           removed += 1;
@@ -248,8 +318,12 @@ export class PropertyBrowserCacheService {
       const prefix = `${responseContextId}|`;
       for (const key of keys) {
         if (!key.startsWith(prefix)) continue;
-        const row = await this.storage.get(key);
-        if (!row) continue;
+        const row = normalizeBrowserCacheRecord(await this.storage.get(key));
+        if (!row) {
+          await this.storage.delete(key);
+          removed += 1;
+          continue;
+        }
 
         const catPolicy = policy.categories[row.category];
         const drop =
@@ -273,6 +347,41 @@ export class PropertyBrowserCacheService {
       return removed;
     }
     return removed;
+  }
+
+  private async hydrateRecord(
+    key: string,
+    raw: BrowserCacheRecord | LegacyBrowserCacheRecordV1 | null | undefined
+  ): Promise<BrowserCacheRecord | null> {
+    const normalized = normalizeBrowserCacheRecord(raw);
+    if (!normalized) {
+      if (raw) {
+        void this.storage.delete(key).catch(() => undefined);
+      }
+      return null;
+    }
+
+    const rawRecord = raw as BrowserCacheRecord & LegacyBrowserCacheRecordV1;
+    const needsRewrite =
+      Boolean(rawRecord.databaseExpiresAt && !rawRecord.sourceCacheExpiresAt) ||
+      rawRecord.browserExpiresAt !== normalized.browserExpiresAt ||
+      rawRecord.schemaVersion !== BROWSER_CACHE_SCHEMA_VERSION;
+
+    if (needsRewrite && isBrowserRecordFresh(normalized.browserExpiresAt, this.now())) {
+      const rewritten: BrowserCacheRecord = {
+        ...normalized,
+        schemaVersion: BROWSER_CACHE_SCHEMA_VERSION,
+      };
+      void this.storage.set(key, rewritten).catch(() => undefined);
+      return rewritten;
+    }
+
+    return {
+      ...normalized,
+      schemaVersion: needsRewrite
+        ? BROWSER_CACHE_SCHEMA_VERSION
+        : normalized.schemaVersion,
+    };
   }
 
   private evaluate(

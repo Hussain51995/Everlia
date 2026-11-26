@@ -1,18 +1,18 @@
 import type { CacheFreshnessPolicy } from "@/lib/property-intelligence/cache/types";
 
 export function resolveEffectiveTtlSeconds(
-  databaseTtlSeconds: number,
-  maxDatabaseTtlSeconds?: number | null
+  redisTtlSeconds: number,
+  maxRedisTtlSeconds?: number | null
 ): number {
-  const admin = Math.max(1, Math.floor(databaseTtlSeconds));
+  const admin = Math.max(1, Math.floor(redisTtlSeconds));
   if (
-    maxDatabaseTtlSeconds == null ||
-    !Number.isFinite(maxDatabaseTtlSeconds) ||
-    maxDatabaseTtlSeconds <= 0
+    maxRedisTtlSeconds == null ||
+    !Number.isFinite(maxRedisTtlSeconds) ||
+    maxRedisTtlSeconds <= 0
   ) {
     return admin;
   }
-  return Math.min(admin, Math.floor(maxDatabaseTtlSeconds));
+  return Math.min(admin, Math.floor(maxRedisTtlSeconds));
 }
 
 export function computeEffectiveExpiresAt(input: {
@@ -20,7 +20,7 @@ export function computeEffectiveExpiresAt(input: {
   storedExpiresAt: string;
   policy?: Pick<
     CacheFreshnessPolicy,
-    "databaseTtlSeconds" | "maxDatabaseTtlSeconds"
+    "redisTtlSeconds" | "maxRedisTtlSeconds"
   > | null;
 }): {
   effectiveExpiresAt: string;
@@ -53,8 +53,8 @@ export function computeEffectiveExpiresAt(input: {
   }
 
   const ttlSeconds = resolveEffectiveTtlSeconds(
-    input.policy.databaseTtlSeconds,
-    input.policy.maxDatabaseTtlSeconds
+    input.policy.redisTtlSeconds,
+    input.policy.maxRedisTtlSeconds
   );
   const fromConfigMs = fetchedMs + ttlSeconds * 1000;
   const effectiveMs = Math.min(storedMs, fromConfigMs);

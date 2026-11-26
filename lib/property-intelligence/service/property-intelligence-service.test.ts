@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MemoryPropertyCacheRepository } from "@/lib/property-intelligence/cache/cache-repository";
-import { createPropertyCacheService } from "@/lib/property-intelligence/cache/cache-service";
-import { MemoryPropertyIdentityRepository } from "@/lib/property-intelligence/cache/identity-repository";
+import { createTestPropertyCacheService } from "@/lib/property-intelligence/cache/test-cache";
 import { createStubBudgetGateway } from "@/lib/property-intelligence/execution/budget-gateway";
 import {
   createMockProvider,
@@ -45,10 +43,10 @@ function buildService(options?: {
     }
   }
 
-  const cache = createPropertyCacheService(
-    new MemoryPropertyCacheRepository(),
-    new MemoryPropertyIdentityRepository()
-  );
+  const { cache } = createTestPropertyCacheService({
+    getInvalidationGeneration: async () =>
+      (await settings.getResolvedConfig()).global.configVersion,
+  });
 
   const registry = new PropertyProviderRegistry({
     defaultProviderId: "mock",

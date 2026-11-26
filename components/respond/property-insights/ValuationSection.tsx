@@ -10,16 +10,20 @@ import {
   CategoryUnavailable,
   shouldRenderCategoryShell,
 } from "./CategoryState";
-import { formatMoney, formatBedsBaths, formatDistanceMiles } from "./format";
-import { PriceBarsChart } from "./charts/PriceBarsChart";
-import { InlineSourceLine } from "./SourceAttribution";
+import { formatMoney } from "./format";
+import { VerticalBarChart } from "./charts/VerticalBarChart";
+import { ComparablesList } from "./ComparablesList";
 
 const LABEL = "Estimated value";
 
 export function ValuationSection({
   result,
+  showComparablesList = true,
+  showCompBars = true,
 }: {
   result: PropertyCategoryResult<PropertyValuation>;
+  showComparablesList?: boolean;
+  showCompBars?: boolean;
 }) {
   const mode = shouldRenderCategoryShell(result.status, result.data);
   if (mode === "hide") return null;
@@ -81,7 +85,7 @@ export function ValuationSection({
 
   return (
     <section
-      className="rounded-2xl border border-[#E5F4F8] bg-[#F7FCFE]/90 p-4 sm:p-5"
+      className="flex h-full flex-col rounded-2xl border border-[#E5F4F8] bg-[#F7FCFE]/90 p-4 sm:p-5"
       aria-labelledby="pi-valuation-heading"
     >
       <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#38B2D1]">
@@ -131,48 +135,21 @@ export function ValuationSection({
         </div>
       ) : null}
 
-      {compBars.length >= 2 ? (
-        <PriceBarsChart
-          title="Estimate vs nearby comps"
-          items={compBars.slice(0, 5)}
-          caption="Bars use published list prices from valuation comparables only."
-        />
-      ) : null}
-
-      {comparables.length > 0 ? (
-        <div className="mt-4 border-t border-[#E8F7FB] pt-3">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-[#557393]">
-            Nearby comparables
-          </p>
-          <ul className="mt-2 space-y-2">
-            {comparables.slice(0, 3).map((comp, index) => {
-              const price = formatMoney(comp.listPrice);
-              const beds = formatBedsBaths(
-                comp.specifications.bedrooms,
-                comp.specifications.bathrooms
-              );
-              const distance = formatDistanceMiles(comp.distanceMiles);
-              const address =
-                comp.identity.components.formatted ||
-                comp.identity.components.line1 ||
-                "Comparable property";
-              return (
-                <li
-                  key={`${address}-${index}`}
-                  className="rounded-xl bg-white px-3 py-2 text-xs text-[#557393] ring-1 ring-[#E8F7FB]"
-                >
-                  <p className="font-semibold text-[#0B1F3D]">{address}</p>
-                  <p className="mt-0.5">
-                    {[price, beds, distance].filter(Boolean).join(" · ")}
-                  </p>
-                </li>
-              );
-            })}
-          </ul>
+      {showCompBars && compBars.length >= 2 ? (
+        <div className="mt-4 rounded-xl bg-white p-3 shadow-sm ring-1 ring-[#E8F7FB]">
+          <VerticalBarChart
+            title="Estimate vs nearby comps"
+            items={compBars.slice(0, 5)}
+            caption="Bars use published list prices from valuation comparables only."
+          />
         </div>
       ) : null}
 
-      <InlineSourceLine source={result.source} />
+      {showComparablesList ? (
+        <div className="mt-4 flex-1">
+          <ComparablesList comparables={comparables} variant="embedded" />
+        </div>
+      ) : null}
     </section>
   );
 }

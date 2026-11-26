@@ -28,6 +28,8 @@ export default function PublicRespondPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["respond", token],
     staleTime: 60_000,
+    refetchInterval: 5 * 60_000,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     retry: 1,
@@ -245,7 +247,7 @@ export default function PublicRespondPage() {
     <div
       className={`relative overflow-x-hidden ${
         dualPane
-          ? "min-h-[100svh] lg:h-[100svh] lg:overflow-hidden"
+          ? "min-h-[100svh] lg:h-[100svh] lg:max-h-[100svh] lg:overflow-hidden"
           : "min-h-screen min-h-[100svh]"
       }`}
     >
@@ -261,7 +263,7 @@ export default function PublicRespondPage() {
       <main
         className={`relative z-10 mx-auto w-full px-3 sm:px-5 lg:px-6 xl:px-8 ${
           dualPane
-            ? "flex max-w-[90rem] flex-col pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:h-full"
+            ? "flex max-w-[90rem] flex-col pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] lg:h-full lg:min-h-0 lg:overflow-hidden lg:pb-[max(0.75rem,env(safe-area-inset-bottom))]"
             : "max-w-lg pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:max-w-md"
         }`}
       >
@@ -307,13 +309,13 @@ export default function PublicRespondPage() {
           </div>
         ) : showInsights ? (
           <div className="grid gap-4 md:gap-5 lg:h-full lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(280px,360px)_minmax(0,1fr)] lg:grid-rows-1 lg:gap-5 xl:grid-cols-[minmax(300px,380px)_minmax(0,1fr)] xl:gap-6">
-            <aside className="order-1 flex min-h-0 flex-col overflow-hidden rounded-[1.5rem] border border-[#D7EAF1] bg-white shadow-[0_16px_40px_-18px_rgba(11,31,61,0.28)] sm:rounded-[1.75rem] lg:h-full">
-              <div className="everlia-pane-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5 lg:p-6">
+            <aside className="order-1 flex min-w-0 flex-col rounded-[1.5rem] border border-[#D7EAF1] bg-white shadow-[0_16px_40px_-18px_rgba(11,31,61,0.28)] sm:rounded-[1.75rem] lg:h-full lg:min-h-0 lg:overflow-hidden">
+              <div className="p-4 sm:p-5 lg:everlia-pane-scroll lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain lg:p-6">
                 {greetingCard}
               </div>
             </aside>
-            <div className="order-2 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[1.5rem] border border-[#D7EAF1] bg-white shadow-[0_16px_40px_-18px_rgba(11,31,61,0.28)] sm:rounded-[1.75rem] lg:h-full">
-              <div className="everlia-pane-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 sm:p-4 lg:p-5">
+            <div className="order-2 flex min-w-0 flex-col rounded-[1.5rem] border border-[#D7EAF1] bg-white shadow-[0_16px_40px_-18px_rgba(11,31,61,0.28)] sm:rounded-[1.75rem] lg:h-full lg:min-h-0 lg:overflow-hidden">
+              <div className="p-3 sm:p-4 lg:everlia-pane-scroll lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain lg:p-5">
                 {data ? (
                   <PropertyInsightsExperience token={token} respond={data} />
                 ) : null}

@@ -1,8 +1,7 @@
 import { requirePlatformAdmin } from "@/lib/auth/platform-admin";
 import { apiError, apiSuccess, validationError } from "@/lib/api/response";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { SupabasePropertyCacheRepository } from "@/lib/property-intelligence/cache/cache-repository";
 import { isNegativePayload } from "@/lib/property-intelligence/cache/freshness";
+import { createPropertyIntelligenceCacheStack } from "@/lib/property-intelligence/service/factory";
 import { propertyIntelligenceCacheSearchSchema } from "@/lib/validations/property-intelligence";
 import { firstZodError } from "@/lib/validations/errors";
 
@@ -22,12 +21,11 @@ export async function GET(request: Request) {
       );
     }
 
-    const admin = createAdminClient();
-    const repo = new SupabasePropertyCacheRepository(admin);
+    const { cache } = createPropertyIntelligenceCacheStack();
     const limit = parsed.data.limit ?? 50;
     const rows = parsed.data.q?.trim()
-      ? await repo.searchByIdentityKeyPrefix(parsed.data.q.trim(), limit)
-      : await repo.listRecent(limit);
+      ? await cache.searchByIdentityKeyPrefix(parsed.data.q.trim(), limit)
+      : await cache.listRecent(limit);
 
     const now = Date.now();
     const entries = rows.map((row) => {
@@ -59,7 +57,7 @@ export async function GET(request: Request) {
     return apiSuccess({
       entries,
       count: entries.length,
-      note: "Invalidation does not trigger paid provider requests. Payloads are omitted from this list.",
+      note: "Redis L2 metadata only. Invalidation does not trigger paid provider requests. Payloads are omitted from this list.",
     });
   } catch (error) {
     return apiError(

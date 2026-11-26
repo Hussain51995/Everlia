@@ -37,6 +37,7 @@ export function availableFromCache<T>(
     error: null,
     cache: {
       hit: true,
+      serverCacheHit: true,
       fetchedAt: cache.record.fetchedAt,
       expiresAt: cache.effectiveExpiresAt,
       remainingTtlSeconds: cache.remainingTtlSeconds,
@@ -64,6 +65,7 @@ export function availableFromProvider<T>(
     error: null,
     cache: {
       hit: false,
+      serverCacheHit: false,
       fetchedAt: source.retrievedAt,
       expiresAt: cacheMeta?.expiresAt ?? null,
       remainingTtlSeconds: cacheMeta?.remainingTtlSeconds ?? null,

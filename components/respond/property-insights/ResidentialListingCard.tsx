@@ -31,12 +31,12 @@ export function ResidentialListingCard({ listing }: { listing: NearbyListing }) 
           ? "bg-[#FFF4E5] text-[#B87500]"
           : "bg-[#EEF3F7] text-[#6B849E]";
 
-  const meta = [bedsBaths, living, distance].filter(Boolean);
+  const detailMeta = [bedsBaths, living].filter(Boolean);
 
   return (
-    <article className="flex gap-3 rounded-xl border border-[#E5F4F8] bg-[#F7FCFE]/70 p-2.5 transition hover:bg-[#F0FAFC] sm:p-3">
+    <article className="flex min-w-0 gap-3 rounded-xl border border-[#E5F4F8] bg-white p-2.5 shadow-sm ring-1 ring-[#E8F7FB] transition hover:bg-[#F0FAFC] sm:p-3">
       <div
-        className="grid h-14 w-14 shrink-0 place-items-center rounded-lg bg-[linear-gradient(145deg,#E8F7FB_0%,#C4EBF2_100%)] text-[#38B2D1] sm:h-16 sm:w-16"
+        className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-[linear-gradient(145deg,#E8F7FB_0%,#C4EBF2_100%)] text-[#38B2D1] sm:h-16 sm:w-16"
         aria-hidden
       >
         <svg
@@ -51,14 +51,19 @@ export function ResidentialListingCard({ listing }: { listing: NearbyListing }) 
       </div>
 
       <div className="min-w-0 flex-1">
-        <div className="flex items-start justify-between gap-2">
+        <div className="flex flex-wrap items-start gap-2">
           <span
             className={`inline-flex rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${statusTone}`}
           >
             {status}
           </span>
+          {distance ? (
+            <span className="text-[10px] font-semibold text-[#9BB0C2] sm:text-[11px]">
+              {distance}
+            </span>
+          ) : null}
         </div>
-        <h4 className="mt-1 truncate text-[13px] font-extrabold leading-snug text-[#0B1F3D] sm:text-sm">
+        <h4 className="mt-1 break-words [overflow-wrap:anywhere] text-[13px] font-extrabold leading-snug text-[#0B1F3D] sm:text-sm">
           {address}
         </h4>
         {price ? (
@@ -66,9 +71,9 @@ export function ResidentialListingCard({ listing }: { listing: NearbyListing }) 
             {price}
           </p>
         ) : null}
-        {meta.length ? (
-          <p className="mt-0.5 truncate text-[11px] leading-relaxed text-[#557393] sm:text-xs">
-            {meta.join(" · ")}
+        {detailMeta.length ? (
+          <p className="mt-0.5 break-words [overflow-wrap:anywhere] text-[11px] leading-relaxed text-[#557393] sm:text-xs">
+            {detailMeta.join(" · ")}
           </p>
         ) : null}
       </div>

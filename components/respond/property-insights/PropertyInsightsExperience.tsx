@@ -17,9 +17,11 @@ import {
   NearbyLandSection,
 } from "./NearbyListingsSection";
 import { PropertyDetailsSection } from "./PropertyDetailsSection";
-import { SourceAttribution } from "./SourceAttribution";
+import { CompBarsCard } from "./CompBarsCard";
 import { ValuationSection } from "./ValuationSection";
 import { CategoryUnavailable } from "./CategoryState";
+import { InsightsChartsSection } from "./charts/InsightsChartsSection";
+import { Footer } from "@/components/sections/Footer";
 
 export function PropertyInsightsExperience({
   token,
@@ -106,51 +108,71 @@ export function PropertyInsightsExperience({
   const showHouses = enabled.includes("nearby_houses");
   const showLand = enabled.includes("nearby_land");
 
-  const sources = [
-    valuation?.source,
-    details?.source,
-    market?.source,
-    houses?.source,
-    land?.source,
-  ];
+  const topCount = (showValuation ? 1 : 0) + (showDetails ? 1 : 0);
+  const nearbyCount = (showHouses ? 1 : 0) + (showLand ? 1 : 0);
 
   return (
-    <section className="space-y-4 p-1 sm:space-y-5" aria-label="Property insights">
+    <section className="min-w-0 space-y-4 p-1 sm:space-y-5" aria-label="Property insights">
       <InsightsHeader
         customerFirstName={respond.customerFirstName}
         displayHint={bootstrap?.propertyDisplayHint}
       />
-
-      {/* Top row: valuation + details */}
-      {showValuation || showDetails ? (
-        <div className="grid gap-3 sm:gap-4 lg:grid-cols-2">
-          {showValuation ? <ValuationSection result={valuation} /> : null}
-          {showDetails ? <PropertyDetailsSection result={details} /> : null}
+      {topCount > 0 ? (
+        <div
+          className={
+            topCount > 1
+              ? "grid items-stretch gap-3 sm:gap-4 lg:grid-cols-2"
+              : "grid gap-3"
+          }
+        >
+          {showValuation ? (
+            <ValuationSection
+              result={valuation}
+              showComparablesList
+              showCompBars={!(topCount > 1 && showDetails)}
+            />
+          ) : null}
+          {showDetails ? (
+            topCount > 1 && showValuation ? (
+              <div className="grid gap-3 self-stretch">
+                <PropertyDetailsSection result={details} />
+                {valuation?.status === "available" && valuation.data ? (
+                  <CompBarsCard valuation={valuation.data} />
+                ) : null}
+              </div>
+            ) : (
+              <PropertyDetailsSection result={details} />
+            )
+          ) : null}
         </div>
       ) : null}
 
-      {/* Middle: nearby homes + land */}
-      {showHouses || showLand ? (
-        <div className="grid gap-3 sm:gap-4 xl:grid-cols-2">
+      <InsightsChartsSection
+        valuation={showValuation ? valuation : null}
+        market={showMarket ? market : null}
+        nearbyHouses={showHouses ? houses : null}
+      />
+
+      {showMarket ? <MarketStatisticsSection result={market} /> : null}
+
+      {nearbyCount > 0 ? (
+        <div
+          className={
+            nearbyCount > 1
+              ? "grid min-w-0 gap-3 sm:gap-4 lg:grid-cols-2"
+              : "grid min-w-0 gap-3"
+          }
+        >
           {showHouses ? <NearbyHousesSection result={houses} /> : null}
           {showLand ? <NearbyLandSection result={land} /> : null}
         </div>
       ) : null}
 
-      {/* Bottom: market + agent CTA */}
-      {showMarket ? (
-        <div className="grid gap-3 sm:gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(260px,0.85fr)]">
-          <MarketStatisticsSection
-            result={market}
-            valuation={showValuation ? valuation : null}
-          />
-          <AgentContactSection respond={respond} />
-        </div>
-      ) : (
-        <AgentContactSection respond={respond} />
-      )}
+      <AgentContactSection respond={respond} />
 
-      <SourceAttribution sources={sources} />
+      <div className="-mx-3 overflow-hidden rounded-2xl border border-[#E5F4F8] sm:-mx-4 lg:-mx-5">
+        <Footer />
+      </div>
     </section>
   );
 }

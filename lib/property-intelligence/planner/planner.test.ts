@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { addressNormalizationService } from "@/lib/property-intelligence/address-normalization";
-import { MemoryPropertyCacheRepository } from "@/lib/property-intelligence/cache/cache-repository";
-import { createPropertyCacheService } from "@/lib/property-intelligence/cache/cache-service";
-import { MemoryPropertyIdentityRepository } from "@/lib/property-intelligence/cache/identity-repository";
+import { createTestPropertyCacheService } from "@/lib/property-intelligence/cache/test-cache";
 import { createRequestPlanner } from "@/lib/property-intelligence/planner/planner";
 import { createMockProvider } from "@/lib/property-intelligence/providers/mock/provider";
 import { PropertyProviderRegistry } from "@/lib/property-intelligence/providers/registry";
@@ -15,10 +13,7 @@ function setup() {
   for (const category of PROPERTY_DATA_CATEGORIES) {
     settings.setCategoryProvider(category, "mock");
   }
-  const cache = createPropertyCacheService(
-    new MemoryPropertyCacheRepository(),
-    new MemoryPropertyIdentityRepository()
-  );
+  const { cache } = createTestPropertyCacheService();
   const registry = new PropertyProviderRegistry({
     defaultProviderId: "mock",
   });
@@ -67,7 +62,7 @@ describe("PropertyIntelligenceRequestPlanner", () => {
           category === "nearby_houses" || category === "nearby_land"
             ? { items: [] }
             : { cached: true },
-        ttl: { databaseTtlSeconds: 3600 },
+        ttl: { redisTtlSeconds: 3600 },
       });
     }
 
@@ -109,7 +104,7 @@ describe("PropertyIntelligenceRequestPlanner", () => {
         category,
         key,
         payload: category === "nearby_houses" ? { items: [{ id: 1 }] } : { ok: true },
-        ttl: { databaseTtlSeconds: 3600 },
+        ttl: { redisTtlSeconds: 3600 },
       });
     }
 

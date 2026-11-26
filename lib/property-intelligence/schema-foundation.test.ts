@@ -19,10 +19,20 @@ function readMigration(prefix: string) {
 }
 
 describe("Property Intelligence migrations — chain integrity", () => {
-  it("CODE_REVIEW_PASS: migrations 036–040 exist after 035", () => {
+  it("CODE_REVIEW_PASS: migrations 036–044 exist after 035", () => {
     const names = migrationNames();
     expect(names.some((f) => f.startsWith("035_"))).toBe(true);
-    for (const n of ["036", "037", "038", "039", "040"]) {
+    for (const n of [
+      "036",
+      "037",
+      "038",
+      "039",
+      "040",
+      "041",
+      "042",
+      "043",
+      "044",
+    ]) {
       expect(names.some((f) => f.startsWith(`${n}_`))).toBe(true);
     }
   });
@@ -225,6 +235,29 @@ describe("040 try_claim_fetch expires_at ambiguity fix", () => {
     expect(sql).toContain("fl.expires_at");
     expect(sql).toContain("v_out_expires_at");
     expect(sql).toContain("create or replace function");
+  });
+});
+
+describe("043 redis TTL column rename", () => {
+  it("CODE_REVIEW_PASS: renames database_ttl_seconds to redis_ttl_seconds", () => {
+    const sql = readMigration("043");
+    expect(sql).toContain("rename column database_ttl_seconds to redis_ttl_seconds");
+    expect(sql).toContain("browser_ttl_seconds <= redis_ttl_seconds");
+    expect(sql).not.toMatch(/drop table/i);
+  });
+});
+
+describe("044 drop obsolete payload cache", () => {
+  it("CODE_REVIEW_PASS: drops payload cache table and status enum without CASCADE", () => {
+    const sql = readMigration("044");
+    expect(sql).toContain("to_regclass('public.property_intelligence_cache')");
+    expect(sql).toContain("drop table public.property_intelligence_cache");
+    expect(sql).toContain("drop type if exists public.property_intelligence_cache_status");
+    expect(sql).toContain("drop column if exists result_cache_id");
+    expect(sql).not.toMatch(/drop\s+table\s+.+cascade/i);
+    expect(sql).not.toMatch(/drop table if exists public\.(customers|greeting_cards|organizations)\b/i);
+    expect(sql).toContain("property_intelligence_try_claim_fetch");
+    expect(sql).toContain("v_out_expires_at");
   });
 });
 

@@ -134,11 +134,11 @@ export function evaluateCacheFreshness(input: {
     storedExpiresAt: record.expiresAt,
     policy: input.policy
       ? {
-          databaseTtlSeconds: resolveEffectiveTtlSeconds(
-            input.policy.databaseTtlSeconds,
-            input.policy.maxDatabaseTtlSeconds
+          redisTtlSeconds: resolveEffectiveTtlSeconds(
+            input.policy.redisTtlSeconds,
+            input.policy.maxRedisTtlSeconds
           ),
-          maxDatabaseTtlSeconds: input.policy.maxDatabaseTtlSeconds,
+          maxRedisTtlSeconds: input.policy.maxRedisTtlSeconds,
         }
       : null,
   });

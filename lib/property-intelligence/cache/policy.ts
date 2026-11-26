@@ -19,17 +19,17 @@ export {
 } from "@/lib/property-intelligence/cache/policy-math";
 
 export function buildCategoryCachePolicy(input: {
-  databaseTtlSeconds: number;
-  maxDatabaseTtlSeconds?: number | null;
+  redisTtlSeconds: number;
+  maxRedisTtlSeconds?: number | null;
   categoryConfigVersion?: number;
   permitStaleDisplay?: boolean;
 }): CacheFreshnessPolicy {
   return {
-    databaseTtlSeconds: resolveEffectiveTtlSeconds(
-      input.databaseTtlSeconds,
-      input.maxDatabaseTtlSeconds
+    redisTtlSeconds: resolveEffectiveTtlSeconds(
+      input.redisTtlSeconds,
+      input.maxRedisTtlSeconds
     ),
-    maxDatabaseTtlSeconds: input.maxDatabaseTtlSeconds ?? null,
+    maxRedisTtlSeconds: input.maxRedisTtlSeconds ?? null,
     categoryConfigVersion: input.categoryConfigVersion,
     permitStaleDisplay: input.permitStaleDisplay ?? false,
   };
@@ -38,16 +38,16 @@ export function buildCategoryCachePolicy(input: {
 export class PropertyCachePolicyService {
   computeWriteExpiry(input: {
     fetchedAt: Date | string;
-    databaseTtlSeconds: number;
-    maxDatabaseTtlSeconds?: number | null;
+    redisTtlSeconds: number;
+    maxRedisTtlSeconds?: number | null;
   }): { fetchedAt: string; expiresAt: string; ttlSeconds: number } {
     const fetchedAt =
       typeof input.fetchedAt === "string"
         ? new Date(input.fetchedAt)
         : input.fetchedAt;
     const ttlSeconds = resolveEffectiveTtlSeconds(
-      input.databaseTtlSeconds,
-      input.maxDatabaseTtlSeconds
+      input.redisTtlSeconds,
+      input.maxRedisTtlSeconds
     );
     return {
       fetchedAt: fetchedAt.toISOString(),

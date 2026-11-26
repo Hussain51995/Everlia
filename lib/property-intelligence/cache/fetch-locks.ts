@@ -75,7 +75,8 @@ export class SupabasePropertyFetchLockRepository
 {
   constructor(private readonly client: SupabaseClient) {}
 
-  async expireStaleLocks(limit: number): Promise<number> {
+  async expireStaleLocks(limit: number, _nowIso?: string): Promise<number> {
+    void _nowIso;
     const { data, error } = await this.client.rpc(
       "property_intelligence_expire_stale_locks",
       { p_limit: Math.max(1, Math.min(limit, 1000)) }

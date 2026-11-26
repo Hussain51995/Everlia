@@ -80,16 +80,6 @@ export type {
 } from "@/lib/property-intelligence/cache/invalidation";
 
 export {
-  PropertyCacheCleanupService,
-  createCacheCleanupService,
-  DEFAULT_CACHE_CLEANUP_CONFIG,
-} from "@/lib/property-intelligence/cache/cleanup";
-export type {
-  PropertyCacheCleanupConfig,
-  PropertyCacheCleanupReport,
-} from "@/lib/property-intelligence/cache/cleanup";
-
-export {
   MemoryPropertyFetchLockRepository,
   SupabasePropertyFetchLockRepository,
 } from "@/lib/property-intelligence/cache/fetch-locks";
@@ -102,15 +92,44 @@ export {
 export type { PropertyIdentityRepository } from "@/lib/property-intelligence/cache/identity-repository";
 
 export {
-  MemoryPropertyCacheRepository,
-  SupabasePropertyCacheRepository,
-} from "@/lib/property-intelligence/cache/cache-repository";
-export type { PropertyCacheRepository } from "@/lib/property-intelligence/cache/cache-repository";
-
-export {
   PropertyCacheService,
   createPropertyCacheService,
 } from "@/lib/property-intelligence/cache/cache-service";
+
+export {
+  PROPERTY_CACHE_ENTRY_ENVELOPE_VERSION,
+  CacheProviderError,
+  isCacheUnavailableError,
+  createPropertyCacheEntry,
+  parsePropertyCacheEntry,
+  serializePropertyCacheEntry,
+  deserializePropertyCacheEntry,
+  buildPropertyQueryHash,
+  buildRedisStorageKey,
+  redisStorageKeyFromBuiltCacheKey,
+  resolveRedisWriteTtl,
+  remainingTtlSeconds,
+  resolveUpstashRedisConfig,
+  requireUpstashRedisConfig,
+  resolveRedisCacheEnvironment,
+  isUpstashRedisConfigured,
+  getPropertyIntelligenceRedisClient,
+  createPropertyIntelligenceRedisClient,
+  MemoryCacheProvider,
+  createMemoryCacheProvider,
+  UpstashRedisCacheProvider,
+  createUpstashRedisCacheProvider,
+  createPropertyIntelligenceCacheProvider,
+} from "@/lib/property-intelligence/cache/provider";
+export type {
+  CacheProvider,
+  CacheGetResult,
+  CacheSetInput,
+  CachePingResult,
+  PropertyCacheEntry,
+  CreateCacheProviderOptions,
+  UpstashRedisConfig,
+} from "@/lib/property-intelligence/cache/provider";
 
 export {
   MemoryPropertyIntelligenceSettingsRepository,
@@ -218,6 +237,30 @@ export {
   DEFAULT_BROWSER_TTL_SECONDS,
   BROWSER_CACHE_SCHEMA_VERSION,
 } from "@/lib/property-intelligence/browser/types";
+export {
+  BROWSER_TTL_ALLOWLIST,
+  BROWSER_TTL_LABELS,
+  MIN_BROWSER_TTL_SECONDS,
+  MAX_BROWSER_TTL_SECONDS,
+  REDIS_TTL_ALLOWLIST,
+  REDIS_TTL_LABELS,
+  DEFAULT_REDIS_TTL_SECONDS,
+  MIN_REDIS_TTL_SECONDS,
+  MAX_REDIS_TTL_SECONDS,
+  isAllowedBrowserTtlSeconds,
+  assertAllowedBrowserTtlSeconds,
+  coerceBrowserTtlSeconds,
+  isAllowedRedisTtlSeconds,
+  assertAllowedRedisTtlSeconds,
+  coerceRedisTtlSeconds,
+  getRecommendedTtlDefaults,
+  formatTtlSeconds,
+  UPSTASH_DASHBOARD_URL,
+} from "@/lib/property-intelligence/settings/ttl-policy";
+export {
+  getRedisConfigStatus,
+  pingRedisStatus,
+} from "@/lib/property-intelligence/admin/redis-status";
 
 export {
   createProviderError,

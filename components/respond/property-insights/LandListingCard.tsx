@@ -24,12 +24,10 @@ export function LandListingCard({ listing }: { listing: NearbyListing }) {
         ? "bg-[#E8EEF5] text-[#557393]"
         : "bg-[#EEF3F7] text-[#6B849E]";
 
-  const meta = [lot, distance].filter(Boolean);
-
   return (
-    <article className="flex gap-3 rounded-xl border border-[#E0ECD8] bg-[#FBFFF8] p-2.5 transition hover:bg-[#F4FAEE] sm:p-3">
+    <article className="flex min-w-0 gap-3 rounded-xl border border-[#E0ECD8] bg-white p-2.5 shadow-sm ring-1 ring-[#E8F0E0] transition hover:bg-[#F4FAEE] sm:p-3">
       <div
-        className="grid h-14 w-14 shrink-0 place-items-center rounded-lg bg-[linear-gradient(145deg,#E7F2DC_0%,#C8DDB0_100%)] text-[#5A7A45] sm:h-16 sm:w-16"
+        className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-[linear-gradient(145deg,#E7F2DC_0%,#C8DDB0_100%)] text-[#5A7A45] sm:h-16 sm:w-16"
         aria-hidden
       >
         <svg
@@ -44,12 +42,19 @@ export function LandListingCard({ listing }: { listing: NearbyListing }) {
       </div>
 
       <div className="min-w-0 flex-1">
-        <span
-          className={`inline-flex rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${statusTone}`}
-        >
-          Land · {status}
-        </span>
-        <h4 className="mt-1 truncate text-[13px] font-extrabold leading-snug text-[#0B1F3D] sm:text-sm">
+        <div className="flex flex-wrap items-start gap-2">
+          <span
+            className={`inline-flex rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${statusTone}`}
+          >
+            Land · {status}
+          </span>
+          {distance ? (
+            <span className="text-[10px] font-semibold text-[#9BB0C2] sm:text-[11px]">
+              {distance}
+            </span>
+          ) : null}
+        </div>
+        <h4 className="mt-1 break-words [overflow-wrap:anywhere] text-[13px] font-extrabold leading-snug text-[#0B1F3D] sm:text-sm">
           {address}
         </h4>
         {price ? (
@@ -57,9 +62,9 @@ export function LandListingCard({ listing }: { listing: NearbyListing }) {
             {price}
           </p>
         ) : null}
-        {meta.length ? (
-          <p className="mt-0.5 truncate text-[11px] leading-relaxed text-[#5A7A45] sm:text-xs">
-            {meta.join(" · ")}
+        {lot ? (
+          <p className="mt-0.5 break-words [overflow-wrap:anywhere] text-[11px] leading-relaxed text-[#5A7A45] sm:text-xs">
+            {lot}
           </p>
         ) : null}
       </div>

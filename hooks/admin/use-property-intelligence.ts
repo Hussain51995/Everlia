@@ -12,10 +12,29 @@ import type {
 } from "@/lib/validations/property-intelligence";
 import type { PropertyDataCategory } from "@/lib/types/property-intelligence";
 
+export type PropertyIntelligenceRedisStatusPayload = {
+  infrastructure: "Upstash Redis";
+  status: "connected" | "not_configured" | "temporarily_unavailable";
+  environment: string | null;
+  checkedAt: string | null;
+  liveCheck: boolean;
+  dashboardUrl: string;
+  note: string;
+};
+
 export type PropertyIntelligenceSettingsResponse = {
   settings: PropertyIntelligenceResolvedConfig;
   providers: AdminProviderStatus[];
   envBudgetDefault: number;
+  redis?: PropertyIntelligenceRedisStatusPayload;
+  ttlPolicy?: {
+    browserAllowlist: readonly number[];
+    browserLabels: Record<number, string>;
+    browserDefaults: Record<string, number>;
+    redisAllowlist: readonly number[];
+    redisLabels: Record<number, string>;
+    redisDefaults: Record<string, number>;
+  };
   note: string;
 };
 
@@ -41,6 +60,12 @@ export type PropertyIntelligenceCacheEntry = {
 export type PropertyIntelligenceCacheResponse = {
   entries: PropertyIntelligenceCacheEntry[];
   count: number;
+  note: string;
+};
+
+export type PropertyIntelligenceUsageMetric = {
+  available: boolean;
+  value?: number | string | null;
   note: string;
 };
 
@@ -72,8 +97,29 @@ export type PropertyIntelligenceUsageResponse = {
       { count: number; succeeded: number; failed: number }
     >;
   };
-  measuredServerSide: Record<string, { available: boolean; note: string }>;
-  notMeasuredServerSide: Record<string, { available: boolean; note: string }>;
+  cacheMetrics: {
+    browserCacheHits: PropertyIntelligenceUsageMetric;
+    browserCacheMisses: PropertyIntelligenceUsageMetric;
+    redisCacheHits: PropertyIntelligenceUsageMetric;
+    redisCacheMisses: PropertyIntelligenceUsageMetric;
+    redisCacheHitRate: PropertyIntelligenceUsageMetric;
+    redisConnectionFailures: PropertyIntelligenceUsageMetric;
+    redisWriteFailures: PropertyIntelligenceUsageMetric;
+    externalProviderRequests: PropertyIntelligenceUsageMetric;
+    requestsAvoided: PropertyIntelligenceUsageMetric;
+    apiBudgetUsed: PropertyIntelligenceUsageMetric;
+    apiBudgetRemaining: PropertyIntelligenceUsageMetric;
+    deduplicatedRequests: PropertyIntelligenceUsageMetric;
+  };
+  upstashInfrastructure: {
+    storageUsage: PropertyIntelligenceUsageMetric;
+    commandUsage: PropertyIntelligenceUsageMetric;
+    bandwidthUsage: PropertyIntelligenceUsageMetric;
+    evictedKeys: PropertyIntelligenceUsageMetric;
+    dashboardUrl: string;
+  };
+  measuredServerSide?: Record<string, PropertyIntelligenceUsageMetric>;
+  notMeasuredServerSide?: Record<string, PropertyIntelligenceUsageMetric>;
   note: string;
 };
 
@@ -104,6 +150,7 @@ export function useUpdatePropertyIntelligenceSettings() {
     mutationFn: (input: {
       global?: PropertyIntelligenceGlobalSettingsPatchInput;
       category?: PropertyIntelligenceCategorySettingsPatchInput;
+      restoreDefaults?: true;
     }) =>
       apiClient<{ settings: PropertyIntelligenceResolvedConfig; note: string }>(
         "/api/admin/property-intelligence/settings",
@@ -117,6 +164,21 @@ export function useUpdatePropertyIntelligenceSettings() {
         queryKey: adminKeys.propertyIntelligenceUsage(),
       });
     },
+  });
+}
+
+export function usePropertyIntelligenceRedisHealth(enabled = false) {
+  return useQuery({
+    queryKey: adminKeys.propertyIntelligenceRedisStatus(),
+    enabled,
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: false,
+    queryFn: () =>
+      apiClient<{ redis: PropertyIntelligenceRedisStatusPayload; note: string }>(
+        "/api/admin/property-intelligence/redis-status"
+      ),
   });
 }
 

@@ -109,9 +109,9 @@ export function ProviderConfigPanel() {
                       {cap.requestCostUnits}
                     </td>
                     <td className="py-2.5 pr-4 text-[#557393]">
-                      {cap.maxDatabaseTtlSeconds == null
+                      {cap.maxRedisTtlSeconds == null
                         ? "—"
-                        : `${cap.maxDatabaseTtlSeconds}s`}
+                        : `${cap.maxRedisTtlSeconds}s`}
                     </td>
                     <td className="py-2.5 text-[#557393]">
                       {cap.endpointCoverage.length

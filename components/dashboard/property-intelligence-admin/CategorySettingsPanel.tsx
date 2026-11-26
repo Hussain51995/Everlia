@@ -12,17 +12,29 @@ import { useToast } from "@/components/ui/Toast";
 import { PROPERTY_DATA_CATEGORIES } from "@/lib/types/property-intelligence";
 import type { PropertyDataCategory } from "@/lib/types/property-intelligence";
 import {
+  BROWSER_TTL_ALLOWLIST,
+  BROWSER_TTL_LABELS,
+  REDIS_TTL_ALLOWLIST,
+  REDIS_TTL_LABELS,
+  coerceBrowserTtlSeconds,
+  coerceRedisTtlSeconds,
+  formatTtlSeconds,
+  getRecommendedTtlDefaults,
+  type AllowedBrowserTtlSeconds,
+  type AllowedRedisTtlSeconds,
+} from "@/lib/property-intelligence/settings/ttl-policy";
+import {
   CATEGORY_LABELS,
   categorySupportsListingLimit,
   categorySupportsRadius,
-  formatSeconds,
 } from "./labels";
+import { TtlSelect } from "./TtlSelect";
 
 type Draft = {
   enabled: boolean;
   providerId: string;
-  browserTtlSeconds: number;
-  databaseTtlSeconds: number;
+  browserTtlSeconds: AllowedBrowserTtlSeconds;
+  redisTtlSeconds: AllowedRedisTtlSeconds;
   searchRadiusMiles: number | null;
   listingLimit: number | null;
 };
@@ -38,14 +50,16 @@ export function CategorySettingsPanel() {
 
   const providers = settingsQuery.data?.providers ?? [];
   const category = settingsQuery.data?.settings.categories[activeCategory];
+  const browserCachingEnabled =
+    settingsQuery.data?.settings.global.browserCachingEnabled ?? true;
 
   useEffect(() => {
     if (!category) return;
     setDraft({
       enabled: category.enabled,
       providerId: String(category.providerId || "rentcast"),
-      browserTtlSeconds: category.browserTtlSeconds,
-      databaseTtlSeconds: category.databaseTtlSeconds,
+      browserTtlSeconds: coerceBrowserTtlSeconds(category.browserTtlSeconds),
+      redisTtlSeconds: coerceRedisTtlSeconds(category.redisTtlSeconds),
       searchRadiusMiles: category.searchRadiusMiles,
       listingLimit: category.listingLimit,
     });
@@ -69,32 +83,35 @@ export function CategorySettingsPanel() {
     return cap?.retentionNotes ?? null;
   }, [providers, draft?.providerId, activeCategory]);
 
-  const maxDbTtl = useMemo(() => {
+  const maxRedisTtl = useMemo(() => {
     const provider = providers.find((p) => p.id === draft?.providerId);
     const cap = provider?.capabilities.find(
       (c) => c.category === activeCategory
     );
-    return cap?.maxDatabaseTtlSeconds ?? null;
+    return cap?.maxRedisTtlSeconds ?? null;
   }, [providers, draft?.providerId, activeCategory]);
+
+  const allowedRedisOptions = useMemo(() => {
+    if (maxRedisTtl == null) return REDIS_TTL_ALLOWLIST;
+    return REDIS_TTL_ALLOWLIST.filter((seconds) => seconds <= maxRedisTtl);
+  }, [maxRedisTtl]);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (!draft) return;
     setFormError(null);
 
-    if (draft.browserTtlSeconds > draft.databaseTtlSeconds) {
-      setFormError("Browser TTL must not exceed database TTL");
+    if (draft.browserTtlSeconds > draft.redisTtlSeconds) {
+      setFormError("Browser TTL must not exceed Redis TTL");
       return;
     }
-    if (maxDbTtl != null && draft.databaseTtlSeconds > maxDbTtl) {
+    if (maxRedisTtl != null && draft.redisTtlSeconds > maxRedisTtl) {
       setFormError(
-        `Database TTL exceeds provider retention limit (${formatSeconds(maxDbTtl)})`
+        `Redis TTL exceeds provider retention limit (${formatTtlSeconds(maxRedisTtl)}). Choose a shorter duration.`
       );
       return;
     }
-    if (
-      !selectableProviders.some((p) => p.id === draft.providerId)
-    ) {
+    if (!selectableProviders.some((p) => p.id === draft.providerId)) {
       setFormError("Selected provider does not support this category");
       return;
     }
@@ -105,8 +122,8 @@ export function CategorySettingsPanel() {
           category: activeCategory,
           enabled: draft.enabled,
           providerId: draft.providerId,
-          browserTtlSeconds: Math.floor(draft.browserTtlSeconds),
-          databaseTtlSeconds: Math.floor(draft.databaseTtlSeconds),
+          browserTtlSeconds: draft.browserTtlSeconds,
+          redisTtlSeconds: draft.redisTtlSeconds,
           searchRadiusMiles: categorySupportsRadius(activeCategory)
             ? draft.searchRadiusMiles
             : null,
@@ -122,7 +139,7 @@ export function CategorySettingsPanel() {
           showToast({
             tone: "success",
             title: "Category updated",
-            description: `Config version is now ${next}. Cache validity will reconcile on next read.`,
+            description: `Config version is now ${next}. Existing entries keep their original fetch time; shorter TTLs expire earlier on next read. No provider requests were triggered.`,
           });
         },
         onError: (error) => {
@@ -134,6 +151,47 @@ export function CategorySettingsPanel() {
         },
       }
     );
+  };
+
+  const handleRestoreDefaults = () => {
+    if (
+      !window.confirm(
+        "Restore recommended browser and Redis TTL defaults for all categories? This updates configuration versions and does not refresh property data from providers."
+      )
+    ) {
+      return;
+    }
+    setFormError(null);
+    updateSettings.mutate(
+      { restoreDefaults: true },
+      {
+        onSuccess: () => {
+          showToast({
+            tone: "success",
+            title: "Defaults restored",
+            description:
+              "Recommended TTL values applied. No provider requests were triggered.",
+          });
+        },
+        onError: (error) => {
+          setFormError(
+            error instanceof ApiClientError
+              ? error.message
+              : "Failed to restore defaults"
+          );
+        },
+      }
+    );
+  };
+
+  const applyCategoryRecommended = () => {
+    if (!draft) return;
+    const defaults = getRecommendedTtlDefaults(activeCategory);
+    setDraft({
+      ...draft,
+      browserTtlSeconds: defaults.browserTtlSeconds,
+      redisTtlSeconds: defaults.redisTtlSeconds,
+    });
   };
 
   if (settingsQuery.isLoading) {
@@ -156,21 +214,31 @@ export function CategorySettingsPanel() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
-        {PROPERTY_DATA_CATEGORIES.map((cat) => (
-          <button
-            key={cat}
-            type="button"
-            onClick={() => setActiveCategory(cat)}
-            className={`rounded-2xl px-3 py-1.5 text-xs font-bold transition-colors ${
-              activeCategory === cat
-                ? "bg-[#38B2D1] text-white"
-                : "border border-[#C4EBF2] bg-white text-[#557393] hover:text-[#0B1F3D]"
-            }`}
-          >
-            {CATEGORY_LABELS[cat]}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-2">
+          {PROPERTY_DATA_CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setActiveCategory(cat)}
+              className={`rounded-2xl px-3 py-1.5 text-xs font-bold transition-colors ${
+                activeCategory === cat
+                  ? "bg-[#38B2D1] text-white"
+                  : "border border-[#C4EBF2] bg-white text-[#557393] hover:text-[#0B1F3D]"
+              }`}
+            >
+              {CATEGORY_LABELS[cat]}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={handleRestoreDefaults}
+          disabled={updateSettings.isPending}
+          className="rounded-2xl border border-[#C4EBF2] bg-white px-3 py-1.5 text-xs font-bold text-[#0B1F3D] disabled:opacity-60"
+        >
+          Restore recommended defaults
+        </button>
       </div>
 
       <form
@@ -183,7 +251,8 @@ export function CategorySettingsPanel() {
           </h2>
           <p className="mt-1 text-sm text-[#557393]">
             Config version: {category?.configVersion ?? "—"}. Browser TTL must
-            not exceed database TTL.
+            not exceed Redis TTL. Changing TTL updates configuration versions
+            and reconciles validity from the original fetch timestamp.
           </p>
         </div>
 
@@ -197,6 +266,13 @@ export function CategorySettingsPanel() {
         {retentionNote ? (
           <p className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
             Retention: {retentionNote}
+          </p>
+        ) : null}
+
+        {!browserCachingEnabled ? (
+          <p className="rounded-2xl border border-[#C4EBF2] bg-[#F0FAFC] px-3 py-2 text-xs font-medium text-[#557393]">
+            Browser caching is disabled globally. Browser TTL settings are
+            preserved but L1 cache writes are inactive until re-enabled.
           </p>
         ) : null}
 
@@ -214,7 +290,7 @@ export function CategorySettingsPanel() {
 
         <div>
           <label className="block text-xs font-bold uppercase tracking-wider text-[#0B1F3D]">
-            Provider
+            Property data provider
           </label>
           <select
             value={draft.providerId}
@@ -237,50 +313,46 @@ export function CategorySettingsPanel() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-[#0B1F3D]">
-              Browser cache TTL (seconds)
-            </label>
-            <input
-              type="number"
-              min={1}
-              value={draft.browserTtlSeconds}
-              onChange={(e) =>
-                setDraft({
-                  ...draft,
-                  browserTtlSeconds: Number(e.target.value),
-                })
-              }
-              className="mt-1 w-full rounded-2xl border border-[#C4EBF2] bg-[#F0FAFC] px-4 py-3 text-sm font-medium text-[#0B1F3D] outline-none focus:border-[#38B2D1] focus:bg-white"
-            />
-            <p className="mt-1 text-xs text-[#557393]">
-              ≈ {formatSeconds(draft.browserTtlSeconds)}
-            </p>
-          </div>
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-[#0B1F3D]">
-              Database cache TTL (seconds)
-            </label>
-            <input
-              type="number"
-              min={1}
-              value={draft.databaseTtlSeconds}
-              onChange={(e) =>
-                setDraft({
-                  ...draft,
-                  databaseTtlSeconds: Number(e.target.value),
-                })
-              }
-              className="mt-1 w-full rounded-2xl border border-[#C4EBF2] bg-[#F0FAFC] px-4 py-3 text-sm font-medium text-[#0B1F3D] outline-none focus:border-[#38B2D1] focus:bg-white"
-            />
-            <p className="mt-1 text-xs text-[#557393]">
-              ≈ {formatSeconds(draft.databaseTtlSeconds)}
-              {maxDbTtl != null
-                ? ` · provider max ${formatSeconds(maxDbTtl)}`
-                : ""}
-            </p>
-          </div>
+          <TtlSelect
+            id={`browser-ttl-${activeCategory}`}
+            label="Browser cache duration"
+            value={draft.browserTtlSeconds}
+            options={BROWSER_TTL_ALLOWLIST}
+            labels={BROWSER_TTL_LABELS}
+            disabled={!browserCachingEnabled}
+            onChange={(browserTtlSeconds) =>
+              setDraft({ ...draft, browserTtlSeconds })
+            }
+            hint="30 minutes–3 hours"
+          />
+          <TtlSelect
+            id={`redis-ttl-${activeCategory}`}
+            label="Redis cache duration"
+            value={
+              (allowedRedisOptions.includes(draft.redisTtlSeconds)
+                ? draft.redisTtlSeconds
+                : allowedRedisOptions[allowedRedisOptions.length - 1] ??
+                  draft.redisTtlSeconds) as AllowedRedisTtlSeconds
+            }
+            options={allowedRedisOptions}
+            labels={REDIS_TTL_LABELS}
+            onChange={(redisTtlSeconds) =>
+              setDraft({ ...draft, redisTtlSeconds })
+            }
+            hint={
+              maxRedisTtl != null
+                ? `Provider max ${formatTtlSeconds(maxRedisTtl)}`
+                : "1–90 days"
+            }
+          />
         </div>
+
+        {maxRedisTtl != null && allowedRedisOptions.length < REDIS_TTL_ALLOWLIST.length ? (
+          <p className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+            Some Redis durations are hidden because the selected provider
+            retention limit is {formatTtlSeconds(maxRedisTtl)}.
+          </p>
+        ) : null}
 
         {categorySupportsRadius(activeCategory) ? (
           <div>
@@ -329,13 +401,22 @@ export function CategorySettingsPanel() {
           </div>
         ) : null}
 
-        <button
-          type="submit"
-          disabled={updateSettings.isPending}
-          className="inline-flex min-h-[42px] items-center justify-center rounded-2xl bg-[#38B2D1] px-5 text-sm font-bold text-white shadow-md transition-all hover:bg-[#2ca0be] disabled:opacity-70"
-        >
-          {updateSettings.isPending ? "Saving…" : "Save category"}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="submit"
+            disabled={updateSettings.isPending}
+            className="inline-flex min-h-[42px] items-center justify-center rounded-2xl bg-[#38B2D1] px-5 text-sm font-bold text-white shadow-md transition-all hover:bg-[#2ca0be] disabled:opacity-70"
+          >
+            {updateSettings.isPending ? "Saving…" : "Save category"}
+          </button>
+          <button
+            type="button"
+            onClick={applyCategoryRecommended}
+            className="inline-flex min-h-[42px] items-center justify-center rounded-2xl border border-[#C4EBF2] bg-white px-4 text-sm font-bold text-[#0B1F3D]"
+          >
+            Use recommended TTLs
+          </button>
+        </div>
       </form>
     </div>
   );

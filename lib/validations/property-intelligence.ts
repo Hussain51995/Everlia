@@ -1,5 +1,29 @@
 import { z } from "zod";
+import {
+  BROWSER_TTL_ALLOWLIST,
+  REDIS_TTL_ALLOWLIST,
+} from "@/lib/property-intelligence/settings/ttl-policy";
 import { PROPERTY_DATA_CATEGORIES } from "@/lib/types/property-intelligence";
+
+const browserTtlSecondsSchema = z
+  .number()
+  .int()
+  .refine(
+    (value) => (BROWSER_TTL_ALLOWLIST as readonly number[]).includes(value),
+    {
+      message: `Browser TTL must be one of: ${BROWSER_TTL_ALLOWLIST.join(", ")} seconds`,
+    }
+  );
+
+const redisTtlSecondsSchema = z
+  .number()
+  .int()
+  .refine(
+    (value) => (REDIS_TTL_ALLOWLIST as readonly number[]).includes(value),
+    {
+      message: `Redis TTL must be one of: ${REDIS_TTL_ALLOWLIST.join(", ")} seconds`,
+    }
+  );
 
 export const propertyInsightsRequestSchema = z.object({
   categories: z
@@ -55,8 +79,8 @@ export const propertyIntelligenceCategorySettingsPatchSchema = z
     category: z.enum(PROPERTY_DATA_CATEGORIES),
     enabled: z.boolean().optional(),
     providerId: z.string().min(1).max(64).optional(),
-    browserTtlSeconds: z.number().int().min(1).max(63072000).optional(),
-    databaseTtlSeconds: z.number().int().min(1).max(63072000).optional(),
+    browserTtlSeconds: browserTtlSecondsSchema.optional(),
+    redisTtlSeconds: redisTtlSecondsSchema.optional(),
     searchRadiusMiles: z.number().positive().max(100).nullable().optional(),
     listingLimit: z.number().int().min(1).max(100).nullable().optional(),
     queryFilters: z.record(z.string(), z.unknown()).optional(),
@@ -64,16 +88,22 @@ export const propertyIntelligenceCategorySettingsPatchSchema = z
   .superRefine((val, ctx) => {
     if (
       val.browserTtlSeconds != null &&
-      val.databaseTtlSeconds != null &&
-      val.browserTtlSeconds > val.databaseTtlSeconds
+      val.redisTtlSeconds != null &&
+      val.browserTtlSeconds > val.redisTtlSeconds
     ) {
       ctx.addIssue({
         code: "custom",
-        message: "Browser TTL must not exceed database TTL",
+        message: "Browser TTL must not exceed Redis TTL",
         path: ["browserTtlSeconds"],
       });
     }
   });
+
+export const propertyIntelligenceSettingsPatchSchema = z.object({
+  global: propertyIntelligenceGlobalSettingsPatchSchema.optional(),
+  category: propertyIntelligenceCategorySettingsPatchSchema.optional(),
+  restoreDefaults: z.literal(true).optional(),
+});
 
 export const propertyIntelligenceCacheSearchSchema = z.object({
   q: z.string().max(500).optional(),
@@ -85,4 +115,7 @@ export type PropertyIntelligenceGlobalSettingsPatchInput = z.infer<
 >;
 export type PropertyIntelligenceCategorySettingsPatchInput = z.infer<
   typeof propertyIntelligenceCategorySettingsPatchSchema
+>;
+export type PropertyIntelligenceSettingsPatchInput = z.infer<
+  typeof propertyIntelligenceSettingsPatchSchema
 >;

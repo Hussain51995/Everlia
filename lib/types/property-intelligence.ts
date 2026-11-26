@@ -235,7 +235,7 @@ export type ProviderCapability = {
   mayAlsoProvide: PropertyDataCategory[];
   requestCostUnits?: number;
   retention: {
-    maxDatabaseTtlSeconds: number | null;
+    maxRedisTtlSeconds: number | null;
     notes: string | null;
   };
   attribution: string | null;
@@ -266,6 +266,7 @@ export type PropertyCategoryResult<T> = {
   error: ProviderError | null;
   cache?: {
     hit: boolean;
+    serverCacheHit?: boolean;
     fetchedAt: string | null;
     expiresAt: string | null;
     remainingTtlSeconds: number | null;

@@ -4,6 +4,15 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { currentBillingPeriodKey } from "@/lib/property-intelligence/execution/billing-period";
 import { resolveProviderMonthlyBudget } from "@/lib/property-intelligence/execution/budget-config";
 import { SupabasePropertyIntelligenceSettingsRepository } from "@/lib/property-intelligence/settings/repository";
+import { UPSTASH_DASHBOARD_URL } from "@/lib/property-intelligence/settings/ttl-policy";
+
+function unavailable(note: string) {
+  return { available: false as const, value: null, note };
+}
+
+function measured(value: number, note: string) {
+  return { available: true as const, value, note };
+}
 
 export async function GET() {
   try {
@@ -88,6 +97,10 @@ export async function GET() {
       (counters ?? [])[0];
     const unitsReserved = Number(primary?.units_reserved ?? 0);
     const unitsConsumed = Number(primary?.units_consumed ?? 0);
+    const remaining = Math.max(0, configuredBudget - unitsReserved);
+
+    const notAggregated =
+      "Not aggregated into a durable rollup yet. Sampled in-process telemetry is not written per hit.";
 
     return apiSuccess({
       billingPeriod,
@@ -96,7 +109,7 @@ export async function GET() {
         label: "Everlia application counters (not a verified RentCast ledger)",
         unitsReserved,
         unitsConsumed,
-        remaining: Math.max(0, configuredBudget - unitsReserved),
+        remaining,
         counters: counters ?? [],
         successfulRequests: succeeded,
         failedRequests: failed,
@@ -105,31 +118,78 @@ export async function GET() {
         byProvider,
         byOperation,
       },
+      cacheMetrics: {
+        browserCacheHits: unavailable(
+          "Browser L1 telemetry is sampled client-side and is not written per hit."
+        ),
+        browserCacheMisses: unavailable(
+          "Browser L1 miss counts are sampled client-side only."
+        ),
+        redisCacheHits: unavailable(notAggregated),
+        redisCacheMisses: unavailable(notAggregated),
+        redisCacheHitRate: unavailable(
+          "L2 hit rate requires durable aggregated counters (not enabled)."
+        ),
+        redisConnectionFailures: unavailable(
+          "Operational Redis failures are logged server-side; durable rollup not enabled."
+        ),
+        redisWriteFailures: unavailable(
+          "Write failures are recorded in-process / logs; durable rollup not enabled."
+        ),
+        externalProviderRequests: measured(
+          succeeded + failed,
+          "Succeeded + failed provider outcomes in the current billing period (Everlia usage table)."
+        ),
+        requestsAvoided: unavailable(
+          "Endpoint optimization avoidances are in-process only."
+        ),
+        apiBudgetUsed: measured(
+          unitsReserved,
+          "Application-local units reserved for the billing period."
+        ),
+        apiBudgetRemaining: measured(
+          remaining,
+          "Configured budget minus reserved units."
+        ),
+        deduplicatedRequests: unavailable(
+          "Dedup events are tracked in-process during requests; durable rollup not enabled."
+        ),
+      },
+      upstashInfrastructure: {
+        storageUsage: unavailable(
+          "Not available via Everlia. See the Upstash console for storage metrics."
+        ),
+        commandUsage: unavailable(
+          "Not available via Everlia. See the Upstash console for command usage."
+        ),
+        bandwidthUsage: unavailable(
+          "Not available via Everlia. See the Upstash console for bandwidth."
+        ),
+        evictedKeys: unavailable(
+          "Not available via Everlia. See the Upstash console for eviction stats."
+        ),
+        dashboardUrl: UPSTASH_DASHBOARD_URL,
+      },
       measuredServerSide: {
-        databaseCacheHitRate: {
-          available: false,
-          note: "L2 hit/miss rates are not aggregated into a durable metric yet.",
-        },
-        deduplicatedRequests: {
-          available: false,
-          note: "Dedup events are tracked in-process during requests; durable rollup not enabled.",
-        },
-        endpointOptimizationsAvoided: {
-          available: false,
-          note: "Optimization avoidances are in-process metrics only.",
-        },
+        serverCacheHitRate: unavailable(
+          "L2 (Redis) hit/miss rates are not aggregated into a durable metric yet."
+        ),
+        deduplicatedRequests: unavailable(
+          "Dedup events are tracked in-process during requests; durable rollup not enabled."
+        ),
+        endpointOptimizationsAvoided: unavailable(
+          "Optimization avoidances are in-process metrics only."
+        ),
       },
       notMeasuredServerSide: {
-        browserCacheHitRate: {
-          available: false,
-          note: "Browser L1 telemetry is sampled client-side and is not written per hit.",
-        },
-        verifiedProviderAccountUsage: {
-          available: false,
-          note: "Does not include RentCast usage outside Everlia. Verify the live account allowance separately.",
-        },
+        browserCacheHitRate: unavailable(
+          "Browser L1 telemetry is sampled client-side and is not written per hit."
+        ),
+        verifiedProviderAccountUsage: unavailable(
+          "Does not include RentCast usage outside Everlia. Verify the live account allowance separately."
+        ),
       },
-      note: "No savings figures are invented. Values above are application-local unless marked otherwise.",
+      note: "No savings figures are invented. Unavailable metrics are marked explicitly. Detailed Redis infrastructure stats are in the Upstash dashboard.",
     });
   } catch (error) {
     return apiError(

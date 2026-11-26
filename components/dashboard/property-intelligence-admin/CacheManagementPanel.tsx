@@ -40,9 +40,9 @@ export function CacheManagementPanel() {
         showToast({
           tone: "success",
           title: "Cache invalidated",
-          description: `${data.invalidation.invalidatedCount} entr${
+          description: `${data.invalidation.invalidatedCount} Redis entr${
             data.invalidation.invalidatedCount === 1 ? "y" : "ies"
-          } soft-invalidated. No provider requests were triggered.`,
+          } invalidated. No provider requests were triggered.`,
         });
       },
       onError: (error) => {
@@ -63,8 +63,10 @@ export function CacheManagementPanel() {
             Cache Management
           </h2>
           <p className="mt-1 text-sm text-[#557393]">
-            Inspect L2 metadata and soft-invalidate entries. Invalidation never
-            triggers paid API requests. Raw provider payloads are not shown.
+            Inspect Upstash Redis (L2) metadata and invalidate namespaced
+            entries via targeted indexes (no FLUSHALL / FLUSHDB / blocking KEYS).
+            Invalidation never triggers paid API requests. Raw payloads are not
+            shown.
           </p>
         </div>
 
@@ -316,13 +318,13 @@ export function CacheManagementPanel() {
           disabled={invalidate.isPending}
           onClick={() =>
             runInvalidate(
-              "Invalidate ALL Property Intelligence cache entries? This is broad and cannot be undone. No paid API requests will be triggered.",
+              "Invalidate ALL Property Intelligence Redis cache entries? This uses namespaced deletes only (never FLUSHDB). It cannot be undone. No paid API requests will be triggered.",
               { scope: "all" }
             )
           }
           className="rounded-2xl border border-rose-300 bg-rose-50 px-4 py-2 text-xs font-bold text-rose-700 disabled:opacity-60"
         >
-          Invalidate all property cache
+          Invalidate all Redis property cache
         </button>
       </div>
     </div>

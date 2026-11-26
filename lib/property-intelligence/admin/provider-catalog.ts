@@ -20,7 +20,7 @@ export type AdminProviderStatus = {
     category: PropertyDataCategory;
     supported: boolean;
     requestCostUnits: number;
-    maxDatabaseTtlSeconds: number | null;
+    maxRedisTtlSeconds: number | null;
     retentionNotes: string | null;
     endpointCoverage: string[];
     mayAlsoProvide: PropertyDataCategory[];
@@ -34,7 +34,7 @@ function mapCapabilities(
     category: c.category,
     supported: c.supported,
     requestCostUnits: c.requestCostUnits ?? 1,
-    maxDatabaseTtlSeconds: c.retention.maxDatabaseTtlSeconds,
+    maxRedisTtlSeconds: c.retention.maxRedisTtlSeconds,
     retentionNotes: c.retention.notes,
     endpointCoverage: c.endpointCoverage,
     mayAlsoProvide: c.mayAlsoProvide,

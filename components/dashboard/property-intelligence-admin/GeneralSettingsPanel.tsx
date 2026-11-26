@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {
+  usePropertyIntelligenceRedisHealth,
   usePropertyIntelligenceSettings,
   useUpdatePropertyIntelligenceSettings,
 } from "@/hooks/admin";
@@ -11,10 +12,36 @@ import { ThemeLoader } from "@/components/ui/ThemeLoader";
 import { useToast } from "@/components/ui/Toast";
 import type { AdminProviderStatus } from "@/lib/property-intelligence/admin/provider-catalog";
 
+function RedisStatusBadge({
+  status,
+}: {
+  status: "connected" | "not_configured" | "temporarily_unavailable";
+}) {
+  const styles =
+    status === "connected"
+      ? "bg-emerald-50 text-emerald-700"
+      : status === "not_configured"
+        ? "bg-amber-50 text-amber-800"
+        : "bg-rose-50 text-rose-700";
+  const label =
+    status === "connected"
+      ? "Connected"
+      : status === "not_configured"
+        ? "Not configured"
+        : "Temporarily unavailable";
+  return (
+    <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${styles}`}>
+      {label}
+    </span>
+  );
+}
+
 export function GeneralSettingsPanel() {
   const { showToast } = useToast();
   const settingsQuery = usePropertyIntelligenceSettings();
   const updateSettings = useUpdatePropertyIntelligenceSettings();
+  const [liveHealthEnabled, setLiveHealthEnabled] = useState(false);
+  const redisHealth = usePropertyIntelligenceRedisHealth(liveHealthEnabled);
 
   const [featureEnabled, setFeatureEnabled] = useState(false);
   const [browserCachingEnabled, setBrowserCachingEnabled] = useState(true);
@@ -33,6 +60,9 @@ export function GeneralSettingsPanel() {
 
   const providers: AdminProviderStatus[] =
     settingsQuery.data?.providers ?? [];
+
+  const redis =
+    redisHealth.data?.redis ?? settingsQuery.data?.redis ?? null;
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,6 +142,55 @@ export function GeneralSettingsPanel() {
           <span>{formError}</span>
         </div>
       ) : null}
+
+      <div className="space-y-3 rounded-2xl border border-[#C4EBF2] bg-[#F0FAFC] p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[#0B1F3D]">
+              Cache infrastructure
+            </h3>
+            <p className="mt-1 text-sm font-semibold text-[#0B1F3D]">
+              Upstash Redis
+            </p>
+          </div>
+          {redis ? <RedisStatusBadge status={redis.status} /> : null}
+        </div>
+        <p className="text-xs text-[#557393]">
+          {redis?.note ??
+            "Configuration status loads with settings. Credentials are never displayed."}
+        </p>
+        {redis?.environment ? (
+          <p className="text-xs text-[#557393]">
+            Environment namespace:{" "}
+            <span className="font-semibold text-[#0B1F3D]">
+              {redis.environment}
+            </span>
+          </p>
+        ) : null}
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setLiveHealthEnabled(true);
+              void redisHealth.refetch();
+            }}
+            disabled={redisHealth.isFetching}
+            className="rounded-2xl border border-[#C4EBF2] bg-white px-3 py-1.5 text-xs font-bold text-[#0B1F3D] disabled:opacity-60"
+          >
+            {redisHealth.isFetching ? "Checking…" : "Run live health check"}
+          </button>
+          {redis?.dashboardUrl ? (
+            <a
+              href={redis.dashboardUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-2xl border border-[#C4EBF2] bg-white px-3 py-1.5 text-xs font-bold text-[#38B2D1]"
+            >
+              Open Upstash dashboard
+            </a>
+          ) : null}
+        </div>
+      </div>
 
       <label className="flex items-center justify-between gap-4 rounded-2xl border border-[#C4EBF2] bg-[#F0FAFC] px-4 py-3">
         <span className="text-sm font-semibold text-[#0B1F3D]">

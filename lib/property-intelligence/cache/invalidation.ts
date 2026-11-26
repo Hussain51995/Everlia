@@ -1,10 +1,14 @@
-import type { PropertyCacheRepository } from "@/lib/property-intelligence/cache/cache-repository";
+import type { PropertyCacheService } from "@/lib/property-intelligence/cache/cache-service";
 import { utcNowIso } from "@/lib/property-intelligence/cache/freshness";
 import type { PropertyDataCategory } from "@/lib/types/property-intelligence";
 
 export type CacheInvalidationTarget =
   | { scope: "property"; normalizedIdentityKey: string }
-  | { scope: "category"; category: PropertyDataCategory; normalizedIdentityKey?: string | null }
+  | {
+      scope: "category";
+      category: PropertyDataCategory;
+      normalizedIdentityKey?: string | null;
+    }
   | { scope: "zip"; countryCode: string; zipCode: string }
   | { scope: "provider"; providerId: string }
   | { scope: "all" };
@@ -14,11 +18,12 @@ export type CacheInvalidationResult = {
   invalidatedCount: number;
   triggeredProviderFetch: false;
   at: string;
+  invalidationGeneration?: number;
 };
 
 export class PropertyCacheInvalidationService {
   constructor(
-    private readonly cacheRepo: PropertyCacheRepository,
+    private readonly cache: PropertyCacheService,
     private readonly now: () => Date = () => new Date()
   ) {}
 
@@ -30,34 +35,29 @@ export class PropertyCacheInvalidationService {
 
     switch (target.scope) {
       case "property":
-        invalidatedCount = await this.cacheRepo.invalidateByIdentityKey(
-          target.normalizedIdentityKey,
-          at
+        invalidatedCount = await this.cache.invalidateProperty(
+          target.normalizedIdentityKey
         );
         break;
       case "category":
-        invalidatedCount = await this.cacheRepo.invalidateByCategory(
+        invalidatedCount = await this.cache.invalidateCategory(
           target.category,
-          target.normalizedIdentityKey ?? null,
-          at
+          target.normalizedIdentityKey ?? null
         );
         break;
-      case "zip": {
-        const prefix = `market:${target.countryCode.toUpperCase()}:${target.zipCode.trim()}`;
-        invalidatedCount = await this.cacheRepo.invalidateByIdentityKeyPrefix(
-          prefix,
-          at
-        );
+      case "zip":
+        invalidatedCount = await this.cache.invalidateZip({
+          countryCode: target.countryCode,
+          zipCode: target.zipCode,
+        });
         break;
-      }
       case "provider":
-        invalidatedCount = await this.cacheRepo.invalidateByProvider(
-          target.providerId,
-          at
+        invalidatedCount = await this.cache.invalidateProvider(
+          target.providerId
         );
         break;
       case "all":
-        invalidatedCount = await this.cacheRepo.invalidateAll(at);
+        invalidatedCount = await this.cache.invalidateAll();
         break;
     }
 
@@ -71,8 +71,8 @@ export class PropertyCacheInvalidationService {
 }
 
 export function createCacheInvalidationService(
-  cacheRepo: PropertyCacheRepository,
+  cache: PropertyCacheService,
   now?: () => Date
 ): PropertyCacheInvalidationService {
-  return new PropertyCacheInvalidationService(cacheRepo, now);
+  return new PropertyCacheInvalidationService(cache, now);
 }

@@ -16,7 +16,6 @@ import {
   formatPropertyType,
   formatDateLabel,
 } from "./format";
-import { InlineSourceLine } from "./SourceAttribution";
 
 const LABEL = "Property details";
 
@@ -169,7 +168,8 @@ export function PropertyDetailsSection({
       <h3 id="pi-details-heading" className="sr-only">
         {LABEL}
       </h3>
-      <div className="mt-3 grid grid-cols-1 gap-2.5 min-[380px]:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
+      {/* Keep a compact 2-col grid so the panel stays dense beside valuation */}
+      <div className="mt-3 grid grid-cols-1 gap-2.5 min-[380px]:grid-cols-2">
         {items.map((item) => (
           <SpecItem
             key={item.label}
@@ -179,7 +179,6 @@ export function PropertyDetailsSection({
           />
         ))}
       </div>
-      <InlineSourceLine source={result.source} />
     </section>
   );
 }

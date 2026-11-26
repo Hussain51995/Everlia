@@ -3,6 +3,7 @@
 import { usePropertyIntelligenceUsage } from "@/hooks/admin";
 import { ApiClientError } from "@/lib/api/client";
 import { ThemeLoader } from "@/components/ui/ThemeLoader";
+import type { PropertyIntelligenceUsageMetric } from "@/hooks/admin/use-property-intelligence";
 
 function StatCard({
   label,
@@ -24,21 +25,30 @@ function StatCard({
   );
 }
 
-function UnavailableMetric({
+function MetricCard({
   label,
-  note,
+  metric,
 }: {
   label: string;
-  note: string;
+  metric: PropertyIntelligenceUsageMetric;
 }) {
+  if (!metric.available) {
+    return (
+      <div className="rounded-2xl border border-dashed border-[#C4EBF2] bg-white p-4">
+        <p className="text-xs font-bold uppercase tracking-wider text-[#557393]">
+          {label}
+        </p>
+        <p className="mt-1 text-sm font-semibold text-[#0B1F3D]">Not measured</p>
+        <p className="mt-1 text-xs text-[#557393]">{metric.note}</p>
+      </div>
+    );
+  }
   return (
-    <div className="rounded-2xl border border-dashed border-[#C4EBF2] bg-white p-4">
-      <p className="text-xs font-bold uppercase tracking-wider text-[#557393]">
-        {label}
-      </p>
-      <p className="mt-1 text-sm font-semibold text-[#0B1F3D]">Not measured</p>
-      <p className="mt-1 text-xs text-[#557393]">{note}</p>
-    </div>
+    <StatCard
+      label={label}
+      value={metric.value ?? "—"}
+      hint={metric.note}
+    />
   );
 }
 
@@ -65,6 +75,7 @@ export function UsageDashboardPanel() {
 
   const data = usageQuery.data!;
   const local = data.applicationLocal;
+  const metrics = data.cacheMetrics;
   const byProvider = Object.entries(local.byProvider);
   const byOperation = Object.entries(local.byOperation);
 
@@ -82,25 +93,41 @@ export function UsageDashboardPanel() {
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard label="Billing period" value={data.billingPeriod} />
-        <StatCard
-          label="Configured budget"
-          value={data.configuredBudget}
-          hint="Application-local units"
+        <MetricCard label="API budget used" metric={metrics.apiBudgetUsed} />
+        <MetricCard
+          label="API budget remaining"
+          metric={metrics.apiBudgetRemaining}
         />
-        <StatCard
-          label="Units consumed"
-          value={local.unitsConsumed}
-          hint="Measured (Everlia counters)"
+        <MetricCard
+          label="External provider requests"
+          metric={metrics.externalProviderRequests}
         />
-        <StatCard
-          label="Units reserved"
-          value={local.unitsReserved}
-          hint="Measured (Everlia counters)"
+        <MetricCard label="Requests avoided" metric={metrics.requestsAvoided} />
+        <MetricCard
+          label="Deduplicated requests"
+          metric={metrics.deduplicatedRequests}
         />
-        <StatCard
-          label="Remaining"
-          value={local.remaining}
-          hint="Budget − reserved"
+        <MetricCard label="Browser cache hits" metric={metrics.browserCacheHits} />
+        <MetricCard
+          label="Browser cache misses"
+          metric={metrics.browserCacheMisses}
+        />
+        <MetricCard label="Redis cache hits" metric={metrics.redisCacheHits} />
+        <MetricCard
+          label="Redis cache misses"
+          metric={metrics.redisCacheMisses}
+        />
+        <MetricCard
+          label="Redis cache hit rate"
+          metric={metrics.redisCacheHitRate}
+        />
+        <MetricCard
+          label="Redis connection failures"
+          metric={metrics.redisConnectionFailures}
+        />
+        <MetricCard
+          label="Redis write failures"
+          metric={metrics.redisWriteFailures}
         />
         <StatCard
           label="Successful requests"
@@ -111,7 +138,6 @@ export function UsageDashboardPanel() {
           label="Blocked by budget"
           value={local.budgetBlockedRequests}
         />
-        <StatCard label="Skipped" value={local.skippedRequests} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -170,21 +196,44 @@ export function UsageDashboardPanel() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        {Object.entries(data.measuredServerSide).map(([key, meta]) => (
-          <UnavailableMetric
-            key={key}
-            label={key.replace(/([A-Z])/g, " $1")}
-            note={meta.note}
+      <div className="rounded-3xl border border-[#C4EBF2] bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-bold uppercase tracking-wider text-[#0B1F3D]">
+              Upstash infrastructure
+            </h3>
+            <p className="mt-1 text-sm text-[#557393]">
+              Detailed storage, command, bandwidth, and eviction metrics are not
+              exposed inside Everlia.
+            </p>
+          </div>
+          <a
+            href={data.upstashInfrastructure.dashboardUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-2xl bg-[#0B1F3D] px-4 py-2 text-xs font-bold text-white"
+          >
+            Open Upstash dashboard
+          </a>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <MetricCard
+            label="Storage usage"
+            metric={data.upstashInfrastructure.storageUsage}
           />
-        ))}
-        {Object.entries(data.notMeasuredServerSide).map(([key, meta]) => (
-          <UnavailableMetric
-            key={key}
-            label={key.replace(/([A-Z])/g, " $1")}
-            note={meta.note}
+          <MetricCard
+            label="Command usage"
+            metric={data.upstashInfrastructure.commandUsage}
           />
-        ))}
+          <MetricCard
+            label="Bandwidth usage"
+            metric={data.upstashInfrastructure.bandwidthUsage}
+          />
+          <MetricCard
+            label="Evicted keys"
+            metric={data.upstashInfrastructure.evictedKeys}
+          />
+        </div>
       </div>
     </div>
   );

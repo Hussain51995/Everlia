@@ -2,11 +2,9 @@
 import { describe, expect, it } from "vitest";
 import { readdirSync, readFileSync } from "fs";
 import { resolve } from "path";
-import { MemoryPropertyCacheRepository } from "@/lib/property-intelligence/cache/cache-repository";
-import { createPropertyCacheService } from "@/lib/property-intelligence/cache/cache-service";
-import { createCacheCleanupService } from "@/lib/property-intelligence/cache/cleanup";
+import { createTestPropertyCacheService } from "@/lib/property-intelligence/cache/test-cache";
+import { MemoryPropertyFetchLockRepository } from "@/lib/property-intelligence/cache/fetch-locks";
 import { createCacheInvalidationService } from "@/lib/property-intelligence/cache/invalidation";
-import { MemoryPropertyIdentityRepository } from "@/lib/property-intelligence/cache/identity-repository";
 import { buildMarketStatisticsCacheKey } from "@/lib/property-intelligence/cache/keys";
 import { evaluateCacheFreshness } from "@/lib/property-intelligence/cache/freshness";
 import { buildCategoryCachePolicy } from "@/lib/property-intelligence/cache/policy";
@@ -37,7 +35,7 @@ import {
   BrowserStorageError,
   MemoryBrowserCacheStorage,
 } from "@/lib/property-intelligence/browser/storage";
-import { MemoryPropertyFetchLockRepository } from "@/lib/property-intelligence/cache/fetch-locks";
+import { BROWSER_CACHE_SCHEMA_VERSION } from "@/lib/property-intelligence/browser/types";
 import { listAdminProviderCatalog, providerSupportsCategory } from "@/lib/property-intelligence/admin/provider-catalog";
 import { PROPERTY_DATA_CATEGORIES } from "@/lib/types/property-intelligence";
 import type { PropertyDataCategory } from "@/lib/types/property-intelligence";
@@ -93,11 +91,10 @@ function buildInstrumentedService(options?: {
     registry.register(altavista);
   }
 
-  const cacheRepo = new MemoryPropertyCacheRepository();
-  const cache = createPropertyCacheService(
-    cacheRepo,
-    new MemoryPropertyIdentityRepository()
-  );
+  const { cache } = createTestPropertyCacheService({
+    getInvalidationGeneration: async () =>
+      (await settings.getResolvedConfig()).global.configVersion,
+  });
 
   const stub = createStubBudgetGateway({
     allow: true,
@@ -127,7 +124,6 @@ function buildInstrumentedService(options?: {
     service,
     settings,
     cache,
-    cacheRepo,
     registry,
     mock,
     altavista,
@@ -200,10 +196,10 @@ describe("FINAL AUDIT — cache hierarchy A–K", () => {
     };
 
     registry.register(counting);
-    const cache = createPropertyCacheService(
-      new MemoryPropertyCacheRepository(),
-      new MemoryPropertyIdentityRepository()
-    );
+    const { cache } = createTestPropertyCacheService({
+      getInvalidationGeneration: async () =>
+        (await settings.getResolvedConfig()).global.configVersion,
+    });
     const stub = createStubBudgetGateway({ monthlyBudget: 100 });
     const service = createPropertyIntelligenceService({
       settings,
@@ -339,7 +335,7 @@ describe("FINAL AUDIT — cache hierarchy A–K", () => {
         category: "property_details",
         cacheKey: "k",
       },
-      policy: buildCategoryCachePolicy({ databaseTtlSeconds: 86_400 }),
+      policy: buildCategoryCachePolicy({ redisTtlSeconds: 86_400 }),
       now: new Date("2026-06-01T12:30:00.000Z"),
     });
     expect(long.status).toBe("hit");
@@ -351,7 +347,7 @@ describe("FINAL AUDIT — cache hierarchy A–K", () => {
         category: "property_details",
         cacheKey: "k",
       },
-      policy: buildCategoryCachePolicy({ databaseTtlSeconds: 60 }),
+      policy: buildCategoryCachePolicy({ redisTtlSeconds: 60 }),
       now: new Date("2026-06-01T12:30:00.000Z"),
     });
     expect(short.status).toBe("miss");
@@ -402,11 +398,11 @@ describe("FINAL AUDIT — cache hierarchy A–K", () => {
       propertyIdentityKey: "PROP|1",
       category: "property_valuation",
       providerId: "mock",
-      schemaVersion: 1,
+      schemaVersion: BROWSER_CACHE_SCHEMA_VERSION,
       categoryConfigVersion: 1,
       invalidationVersion: 1,
       providerFetchedAt: now.toISOString(),
-      databaseExpiresAt: new Date(now.getTime() + 86_400_000).toISOString(),
+      sourceCacheExpiresAt: new Date(now.getTime() + 86_400_000).toISOString(),
       browserTtlSeconds: 3600,
       responseContextValidUntil: new Date(now.getTime() + 86_400_000).toISOString(),
       data: {
@@ -415,6 +411,7 @@ describe("FINAL AUDIT — cache hierarchy A–K", () => {
         subjectDetails: null,
         comparables: [],
       },
+      now,
     });
     const hit = await browser.get(
       {
@@ -424,7 +421,7 @@ describe("FINAL AUDIT — cache hierarchy A–K", () => {
         providerId: "mock",
       },
       {
-        schemaVersion: 1,
+        schemaVersion: BROWSER_CACHE_SCHEMA_VERSION,
         categoryConfigVersion: 1,
         invalidationVersion: 1,
         propertyIdentityKey: "PROP|1",
@@ -443,23 +440,31 @@ describe("FINAL AUDIT — API cost protection", () => {
     expect(stub!.getUsedUnits()).toBe(0);
   });
 
-  it("no provider calls during invalidation or cleanup", async () => {
-    const { cacheRepo, mock } = buildInstrumentedService();
+  it("no provider calls during invalidation or lock cleanup", async () => {
+    const { cache, mock } = buildInstrumentedService();
     let calls = 0;
     const orig = mock.getPropertyDetails.bind(mock);
     mock.getPropertyDetails = async (i) => {
       calls += 1;
       return orig(i);
     };
-    const invalidation = createCacheInvalidationService(cacheRepo);
+    const invalidation = createCacheInvalidationService(cache);
     await invalidation.invalidate({ scope: "all" });
-    const cleanup = createCacheCleanupService({
-      cacheRepo,
-      lockRepo: new MemoryPropertyFetchLockRepository(),
-      now: () => new Date(),
+    const lockRepo = new MemoryPropertyFetchLockRepository();
+    lockRepo.seed({
+      lockKey: "stale",
+      providerId: "mock",
+      category: "property_details",
+      status: "claimed",
+      claimedAt: "2020-01-01T00:00:00.000Z",
+      expiresAt: "2020-01-01T00:01:00.000Z",
+      updatedAt: "2020-01-01T00:00:00.000Z",
     });
-    const report = await cleanup.run();
-    expect(report.triggeredProviderFetch).toBe(false);
+    const locksExpired = await lockRepo.expireStaleLocks(
+      10,
+      "2025-01-01T00:00:00.000Z"
+    );
+    expect(locksExpired).toBe(1);
     expect(calls).toBe(0);
   });
 

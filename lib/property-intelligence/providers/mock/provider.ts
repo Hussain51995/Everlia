@@ -74,7 +74,7 @@ export class MockPropertyDataProvider implements PropertyDataProvider {
             : [],
         requestCostUnits: 1,
         retention: {
-          maxDatabaseTtlSeconds: 3600,
+          maxRedisTtlSeconds: 3600,
           notes: "Mock data must not be persisted as production cache",
         },
         attribution: MOCK_ATTRIBUTION,

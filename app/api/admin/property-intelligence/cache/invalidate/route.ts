@@ -1,8 +1,7 @@
 import { requirePlatformAdmin } from "@/lib/auth/platform-admin";
 import { apiError, apiSuccess, validationError } from "@/lib/api/response";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { SupabasePropertyCacheRepository } from "@/lib/property-intelligence/cache/cache-repository";
 import { createCacheInvalidationService } from "@/lib/property-intelligence/cache/invalidation";
+import { createPropertyIntelligenceCacheStack } from "@/lib/property-intelligence/service/factory";
 import { propertyIntelligenceCacheInvalidateSchema } from "@/lib/validations/property-intelligence";
 import { firstZodError } from "@/lib/validations/errors";
 
@@ -25,14 +24,20 @@ export async function POST(request: Request) {
       );
     }
 
-    const admin = createAdminClient();
-    const service = createCacheInvalidationService(
-      new SupabasePropertyCacheRepository(admin)
-    );
+    const { settings, cache } = createPropertyIntelligenceCacheStack();
+    const service = createCacheInvalidationService(cache);
     const result = await service.invalidate(parsed.data);
 
+    let invalidationGeneration: number | undefined;
+    if (settings.bumpConfigVersion) {
+      invalidationGeneration = await settings.bumpConfigVersion();
+    }
+
     return apiSuccess({
-      invalidation: result,
+      invalidation: {
+        ...result,
+        invalidationGeneration,
+      },
       note: "Cache entries invalidated. Fresh data will load on the next eligible request only.",
     });
   } catch (error) {

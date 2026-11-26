@@ -83,20 +83,9 @@ export type CacheRecord = {
   updatedAt: string;
 };
 
-export type StoreCacheInput = {
-  key: BuiltCacheKey;
-  providerId: PropertyProviderId;
-  category: PropertyDataCategory;
-  identityId?: string | null;
-  payload: CachePayload;
-  fetchedAt: string;
-  expiresAt: string;
-  sourceDataAt?: string | null;
-};
-
 export type CacheFreshnessPolicy = {
-  databaseTtlSeconds: number;
-  maxDatabaseTtlSeconds?: number | null;
+  redisTtlSeconds: number;
+  maxRedisTtlSeconds?: number | null;
   categoryConfigVersion?: number;
   permitStaleDisplay?: boolean;
 };
@@ -127,7 +116,9 @@ export type CacheMiss = {
     | "schema_mismatch"
     | "scope_mismatch"
     | "provider_mismatch"
-    | "category_disabled";
+    | "category_disabled"
+    | "cache_unavailable"
+    | "invalid_payload";
   record?: CacheRecord;
   effectiveExpiresAt?: string;
   tightenedByConfig?: boolean;
@@ -137,8 +128,8 @@ export type CacheMiss = {
 export type CacheLookupResult = CacheHit | CacheMiss;
 
 export type CategoryTtlSeconds = {
-  databaseTtlSeconds: number;
-  maxDatabaseTtlSeconds?: number | null;
+  redisTtlSeconds: number;
+  maxRedisTtlSeconds?: number | null;
 };
 
 export type CacheServiceOptions = {

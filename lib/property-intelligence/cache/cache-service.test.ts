@@ -1,22 +1,21 @@
 import { describe, expect, it } from "vitest";
 import { addressNormalizationService } from "@/lib/property-intelligence/address-normalization";
-import { MemoryPropertyCacheRepository } from "@/lib/property-intelligence/cache/cache-repository";
-import { createPropertyCacheService } from "@/lib/property-intelligence/cache/cache-service";
-import { MemoryPropertyIdentityRepository } from "@/lib/property-intelligence/cache/identity-repository";
 import { fingerprintParams, stableStringify } from "@/lib/property-intelligence/cache/keys";
+import { createTestPropertyCacheService } from "@/lib/property-intelligence/cache/test-cache";
 import { resolveCustomerPropertyAddress } from "@/lib/property-intelligence/customer-property";
 
 function makeService(options?: {
   disabled?: Set<string>;
   now?: () => Date;
 }) {
-  const cacheRepo = new MemoryPropertyCacheRepository();
-  const identityRepo = new MemoryPropertyIdentityRepository();
-  const service = createPropertyCacheService(cacheRepo, identityRepo, {
-    isCategoryEnabled: (c) => !(options?.disabled?.has(c) ?? false),
-    now: options?.now,
-  });
-  return { service, cacheRepo, identityRepo };
+  const { cache: service, provider, identityRepo } =
+    createTestPropertyCacheService({
+      options: {
+        isCategoryEnabled: (c) => !(options?.disabled?.has(c) ?? false),
+        now: options?.now,
+      },
+    });
+  return { service, provider, identityRepo };
 }
 
 describe("address normalization + customer property source", () => {
@@ -136,7 +135,7 @@ describe("PropertyCacheService", () => {
       key: detailsKey,
       identityId: identity.id,
       payload: { bedrooms: 3 },
-      ttl: { databaseTtlSeconds: 3600 },
+      ttl: { redisTtlSeconds: 3600 },
       fetchedAt,
     });
 
@@ -146,7 +145,7 @@ describe("PropertyCacheService", () => {
       key: valuationKey,
       identityId: identity.id,
       payload: { estimate: 265000 },
-      ttl: { databaseTtlSeconds: 3600 },
+      ttl: { redisTtlSeconds: 3600 },
       fetchedAt,
     });
 
@@ -199,7 +198,7 @@ describe("PropertyCacheService", () => {
       key,
       identityId: idA.id,
       payload: { shared: true },
-      ttl: { databaseTtlSeconds: 3600 },
+      ttl: { redisTtlSeconds: 3600 },
     });
 
     const hit = await service.getValid({
@@ -221,7 +220,7 @@ describe("PropertyCacheService", () => {
       category: "market_statistics",
       key,
       payload: { medianPrice: 265000 },
-      ttl: { databaseTtlSeconds: 86400 },
+      ttl: { redisTtlSeconds: 86400 },
     });
 
     const again = await service.getValid({
@@ -237,7 +236,7 @@ describe("PropertyCacheService", () => {
 
   it("treats expired and invalidated rows as misses without rewriting fetchedAt", async () => {
     let now = new Date("2025-01-01T00:00:00.000Z");
-    const { service, cacheRepo } = makeService({ now: () => now });
+    const { service } = makeService({ now: () => now });
     const key = service.detailsKey("rentcast", "PROP|1");
 
     await service.store({
@@ -245,7 +244,7 @@ describe("PropertyCacheService", () => {
       category: "property_details",
       key,
       payload: { x: 1 },
-      ttl: { databaseTtlSeconds: 10 },
+      ttl: { redisTtlSeconds: 10 },
       fetchedAt: "2025-01-01T00:00:00.000Z",
     });
 
@@ -256,10 +255,10 @@ describe("PropertyCacheService", () => {
       key,
     });
     expect(expired.status).toBe("miss");
-    if (expired.status === "miss") expect(expired.reason).toBe("expired");
-
-    const row = await cacheRepo.getByCacheKey(key.cacheKey);
-    expect(row?.fetchedAt).toBe("2025-01-01T00:00:00.000Z");
+    if (expired.status === "miss") {
+      expect(expired.reason).toBe("expired");
+      expect(expired.record?.fetchedAt).toBe("2025-01-01T00:00:00.000Z");
+    }
 
     now = new Date("2025-01-01T00:00:00.000Z");
     await service.store({
@@ -267,7 +266,7 @@ describe("PropertyCacheService", () => {
       category: "property_details",
       key,
       payload: { x: 2 },
-      ttl: { databaseTtlSeconds: 1000 },
+      ttl: { redisTtlSeconds: 1000 },
       fetchedAt: "2025-01-01T00:00:00.000Z",
     });
     await service.invalidateProperty("PROP|1");
@@ -278,7 +277,7 @@ describe("PropertyCacheService", () => {
     });
     expect(invalidated.status).toBe("miss");
     if (invalidated.status === "miss") {
-      expect(invalidated.reason).toBe("invalidated");
+      expect(invalidated.reason).toBe("not_found");
     }
   });
 
@@ -296,7 +295,7 @@ describe("PropertyCacheService", () => {
       category: "nearby_land",
       key,
       payload: { listings: [] },
-      ttl: { databaseTtlSeconds: 3600 },
+      ttl: { redisTtlSeconds: 3600 },
     });
     const disabled = await service.getValid({
       providerId: "rentcast",
@@ -314,7 +313,7 @@ describe("PropertyCacheService", () => {
       category: "property_details",
       key: detailsKey,
       payload: { ok: true },
-      ttl: { databaseTtlSeconds: 3600 },
+      ttl: { redisTtlSeconds: 3600 },
     });
     const providerMiss = await service.getValid({
       providerId: "zillow",
@@ -323,7 +322,7 @@ describe("PropertyCacheService", () => {
     });
     expect(providerMiss.status).toBe("miss");
     if (providerMiss.status === "miss") {
-      expect(providerMiss.reason).toBe("provider_mismatch");
+      expect(providerMiss.reason).toBe("not_found");
     }
   });
 
@@ -357,7 +356,7 @@ describe("PropertyCacheService", () => {
         category: "property_details",
         key,
         payload: { organization_id: "org-1", bedrooms: 3 },
-        ttl: { databaseTtlSeconds: 60 },
+        ttl: { redisTtlSeconds: 60 },
       })
     ).rejects.toThrow(/private key/);
   });
@@ -373,7 +372,7 @@ describe("PropertyCacheService", () => {
       category: "market_statistics",
       key: marketKey,
       payload: { totalListings: 10 },
-      ttl: { databaseTtlSeconds: 3600 },
+      ttl: { redisTtlSeconds: 3600 },
     });
     expect(await service.invalidateZip({ countryCode: "US", zipCode: "78701" })).toBe(1);
     const miss = await service.getValid({
@@ -389,7 +388,7 @@ describe("PropertyCacheService", () => {
       category: "property_details",
       key: dKey,
       payload: { a: 1 },
-      ttl: { databaseTtlSeconds: 3600 },
+      ttl: { redisTtlSeconds: 3600 },
     });
     expect(await service.invalidateProvider("rentcast")).toBeGreaterThan(0);
     expect(
@@ -404,7 +403,7 @@ describe("PropertyCacheService", () => {
   });
 
   it("handles concurrent upserts for the same cache key", async () => {
-    const { service, cacheRepo } = makeService();
+    const { service } = makeService();
     const key = service.detailsKey("rentcast", "PROP|CONCURRENT");
 
     await Promise.all(
@@ -414,16 +413,21 @@ describe("PropertyCacheService", () => {
           category: "property_details",
           key,
           payload: { n: i },
-          ttl: { databaseTtlSeconds: 3600 },
+          ttl: { redisTtlSeconds: 3600 },
           fetchedAt: new Date(Date.UTC(2025, 0, 1, 0, 0, 0, i)).toISOString(),
         })
       )
     );
 
-    const row = await cacheRepo.getByCacheKey(key.cacheKey);
-    expect(row).toBeTruthy();
-    expect(row?.status).toBe("active");
-    expect(typeof (row?.payload as { n: number }).n).toBe("number");
+    const hit = await service.getValid({
+      providerId: "rentcast",
+      category: "property_details",
+      key,
+    });
+    expect(hit.status).toBe("hit");
+    if (hit.status === "hit") {
+      expect(typeof (hit.record.payload as { n: number }).n).toBe("number");
+    }
   });
 
   it("does not put QR tokens or customer names into shared identity metadata", async () => {

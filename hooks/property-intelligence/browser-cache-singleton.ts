@@ -18,8 +18,8 @@ export async function getPropertyBrowserCacheService(): Promise<PropertyBrowserC
             : 0.25,
       });
       const service = createBrowserCacheService({ storage, telemetry });
-      // Best-effort bounded cleanup on first access.
       void service.cleanupExpired({ limit: 40 }).catch(() => undefined);
+      void service.migrateLegacyEntries({ limit: 200 }).catch(() => undefined);
       void service
         .invalidateIncompatibleSchema()
         .catch(() => undefined);

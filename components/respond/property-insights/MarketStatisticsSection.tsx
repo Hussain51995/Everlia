@@ -4,7 +4,6 @@ import type {
   MarketMetricSet,
   MarketStatistics,
   PropertyCategoryResult,
-  PropertyValuation,
 } from "@/lib/types/property-intelligence";
 import {
   CategoryEmpty,
@@ -13,14 +12,11 @@ import {
   shouldRenderCategoryShell,
 } from "./CategoryState";
 import { formatMoney } from "./format";
-import { MarketHistoryChart } from "./charts/MarketHistoryChart";
 import {
   buildMetricTrends,
   MetricTrendCards,
 } from "./charts/MetricTrendCards";
 import { InventorySparkline } from "./charts/InventorySparkline";
-import { PriceBarsChart } from "./charts/PriceBarsChart";
-import { InlineSourceLine } from "./SourceAttribution";
 
 const LABEL = "Market trends";
 
@@ -79,10 +75,8 @@ function extraMetricItems(set: MarketMetricSet | null, kind: "sale" | "rental") 
 
 export function MarketStatisticsSection({
   result,
-  valuation,
 }: {
   result: PropertyCategoryResult<MarketStatistics>;
-  valuation?: PropertyCategoryResult<PropertyValuation> | null;
 }) {
   const mode = shouldRenderCategoryShell(result.status, result.data);
   if (mode === "hide") return null;
@@ -118,40 +112,10 @@ export function MarketStatisticsSection({
     trendCards.length > 0 ||
     extraSale.length > 0 ||
     rentItems.length > 0 ||
-    history.length > 0;
+    history.length >= 2;
 
   if (!hasAnything) {
     return <CategoryEmpty label={LABEL} />;
-  }
-
-  const estimateAmt = valuation?.data?.estimate?.amount;
-  const marketAvg = data.sale?.averagePrice?.amount;
-  const marketMed = data.sale?.medianPrice?.amount;
-  const compareBars = [];
-  if (estimateAmt != null && Number.isFinite(estimateAmt)) {
-    compareBars.push({
-      id: "home",
-      label: "Your home estimate",
-      amount: estimateAmt,
-      emphasize: true,
-      tone: "navy" as const,
-    });
-  }
-  if (marketAvg != null && Number.isFinite(marketAvg)) {
-    compareBars.push({
-      id: "avg",
-      label: "ZIP avg asking",
-      amount: marketAvg,
-      tone: "teal" as const,
-    });
-  }
-  if (marketMed != null && Number.isFinite(marketMed)) {
-    compareBars.push({
-      id: "med",
-      label: "ZIP median asking",
-      amount: marketMed,
-      tone: "muted" as const,
-    });
   }
 
   return (
@@ -177,25 +141,13 @@ export function MarketStatisticsSection({
         . Not completed-sale trends.
       </p>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(160px,0.85fr)] lg:items-start">
-        <div className="min-w-0 rounded-xl bg-white p-3 shadow-sm ring-1 ring-[#E8F7FB]">
-          <MarketHistoryChart series={history} metric="averagePrice" />
-        </div>
-
-        {trendCards.length > 0 ? (
+      {trendCards.length > 0 ? (
+        <div className="mt-4">
           <MetricTrendCards cards={trendCards} />
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
       <InventorySparkline series={history} />
-
-      {compareBars.length >= 2 ? (
-        <PriceBarsChart
-          title="Your estimate vs local asking"
-          items={compareBars}
-          caption="Uses your published estimate and ZIP asking averages from the same response payload."
-        />
-      ) : null}
 
       {extraSale.length > 0 ? (
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -212,8 +164,6 @@ export function MarketStatisticsSection({
           ))}
         </div>
       ) : null}
-
-      <InlineSourceLine source={result.source} />
     </section>
   );
 }

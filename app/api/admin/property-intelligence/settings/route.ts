@@ -5,20 +5,20 @@ import {
   listAdminProviderCatalog,
   providerSupportsCategory,
 } from "@/lib/property-intelligence/admin/provider-catalog";
+import { getRedisConfigStatus } from "@/lib/property-intelligence/admin/redis-status";
 import type { PropertyDataCategory } from "@/lib/types/property-intelligence";
 import { resolveProviderMonthlyBudget } from "@/lib/property-intelligence/execution/budget-config";
 import { SupabasePropertyIntelligenceSettingsRepository } from "@/lib/property-intelligence/settings/repository";
 import {
-  propertyIntelligenceCategorySettingsPatchSchema,
-  propertyIntelligenceGlobalSettingsPatchSchema,
-} from "@/lib/validations/property-intelligence";
+  BROWSER_TTL_ALLOWLIST,
+  BROWSER_TTL_LABELS,
+  DEFAULT_BROWSER_TTL_SECONDS,
+  DEFAULT_REDIS_TTL_SECONDS,
+  REDIS_TTL_ALLOWLIST,
+  REDIS_TTL_LABELS,
+} from "@/lib/property-intelligence/settings/ttl-policy";
+import { propertyIntelligenceSettingsPatchSchema } from "@/lib/validations/property-intelligence";
 import { firstZodError } from "@/lib/validations/errors";
-import { z } from "zod";
-
-const patchSchema = z.object({
-  global: propertyIntelligenceGlobalSettingsPatchSchema.optional(),
-  category: propertyIntelligenceCategorySettingsPatchSchema.optional(),
-});
 
 export async function GET() {
   try {
@@ -36,7 +36,16 @@ export async function GET() {
       envBudgetDefault: resolveProviderMonthlyBudget({
         settingsBudget: config.global.monthlyApiBudget,
       }),
-      note: "API credentials are never returned. Live provider enablement remains separately gated.",
+      redis: getRedisConfigStatus(),
+      ttlPolicy: {
+        browserAllowlist: BROWSER_TTL_ALLOWLIST,
+        browserLabels: BROWSER_TTL_LABELS,
+        browserDefaults: DEFAULT_BROWSER_TTL_SECONDS,
+        redisAllowlist: REDIS_TTL_ALLOWLIST,
+        redisLabels: REDIS_TTL_LABELS,
+        redisDefaults: DEFAULT_REDIS_TTL_SECONDS,
+      },
+      note: "API credentials are never returned. Live provider enablement remains separately gated. Redis status here is configuration-only.",
     });
   } catch (error) {
     return apiError(
@@ -64,19 +73,34 @@ export async function PATCH(request: Request) {
       return validationError("Invalid JSON body");
     }
 
-    const parsed = patchSchema.safeParse(body);
+    const parsed = propertyIntelligenceSettingsPatchSchema.safeParse(body);
     if (!parsed.success) {
       return validationError(
         firstZodError(parsed.error, "Invalid settings patch")
       );
     }
 
-    if (!parsed.data.global && !parsed.data.category) {
-      return validationError("Provide global and/or category updates");
+    if (
+      !parsed.data.global &&
+      !parsed.data.category &&
+      !parsed.data.restoreDefaults
+    ) {
+      return validationError(
+        "Provide global, category, and/or restoreDefaults updates"
+      );
     }
 
     const admin = createAdminClient();
     const repo = new SupabasePropertyIntelligenceSettingsRepository(admin);
+
+    if (parsed.data.restoreDefaults) {
+      await repo.restoreRecommendedDefaults();
+      const config = await repo.getResolvedConfig();
+      return apiSuccess({
+        settings: config,
+        note: "Recommended browser and Redis TTL defaults restored. Config versions updated. No provider requests were triggered.",
+      });
+    }
 
     if (parsed.data.category) {
       const cat = parsed.data.category;
@@ -91,9 +115,9 @@ export async function PATCH(request: Request) {
       }
 
       const browser = cat.browserTtlSeconds ?? current.browserTtlSeconds;
-      const database = cat.databaseTtlSeconds ?? current.databaseTtlSeconds;
-      if (browser > database) {
-        return validationError("Browser TTL must not exceed database TTL");
+      const redisTtl = cat.redisTtlSeconds ?? current.redisTtlSeconds;
+      if (browser > redisTtl) {
+        return validationError("Browser TTL must not exceed Redis TTL");
       }
 
       const provider = catalog.find((p) => p.id === providerId);
@@ -101,11 +125,11 @@ export async function PATCH(request: Request) {
         (c) => c.category === (cat.category as PropertyDataCategory)
       );
       if (
-        capability?.maxDatabaseTtlSeconds != null &&
-        database > capability.maxDatabaseTtlSeconds
+        capability?.maxRedisTtlSeconds != null &&
+        redisTtl > capability.maxRedisTtlSeconds
       ) {
         return validationError(
-          `Database TTL exceeds provider retention limit (${capability.maxDatabaseTtlSeconds}s)`
+          `Redis TTL exceeds provider retention limit (${capability.maxRedisTtlSeconds}s). Choose a shorter duration or a different provider.`
         );
       }
 
@@ -130,7 +154,7 @@ export async function PATCH(request: Request) {
     const config = await repo.getResolvedConfig();
     return apiSuccess({
       settings: config,
-      note: "Configuration versions updated. Cache validity will reconcile on next read; no provider requests were triggered.",
+      note: "Configuration versions updated. Cache validity reconciles from original fetch timestamps on next read; no provider requests were triggered.",
     });
   } catch (error) {
     const message =

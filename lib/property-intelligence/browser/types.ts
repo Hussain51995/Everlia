@@ -2,17 +2,13 @@ import type {
   PropertyDataCategory,
   PropertyProviderId,
 } from "@/lib/types/property-intelligence";
-import { PROPERTY_INTELLIGENCE_DOMAIN_SCHEMA_VERSION } from "@/lib/property-intelligence/cache/types";
+import {
+  DEFAULT_BROWSER_TTL_SECONDS,
+} from "@/lib/property-intelligence/browser/ttl";
 
-export const BROWSER_CACHE_SCHEMA_VERSION = PROPERTY_INTELLIGENCE_DOMAIN_SCHEMA_VERSION;
+export const BROWSER_CACHE_SCHEMA_VERSION = 2;
 
-export const DEFAULT_BROWSER_TTL_SECONDS: Record<PropertyDataCategory, number> = {
-  property_details: 7 * 24 * 60 * 60,
-  property_valuation: 24 * 60 * 60,
-  nearby_houses: 6 * 60 * 60,
-  nearby_land: 6 * 60 * 60,
-  market_statistics: 24 * 60 * 60,
-};
+export { DEFAULT_BROWSER_TTL_SECONDS };
 
 export type ResponseContextId = string;
 
@@ -25,10 +21,18 @@ export type BrowserCacheRecord = {
   categoryConfigVersion: number;
   invalidationVersion: number;
   providerFetchedAt: string;
-  databaseExpiresAt: string;
+  sourceCacheExpiresAt: string;
   browserExpiresAt: string;
   data: unknown;
   writtenAt: string;
+};
+
+export type LegacyBrowserCacheRecordV1 = Omit<
+  BrowserCacheRecord,
+  "sourceCacheExpiresAt"
+> & {
+  databaseExpiresAt?: string;
+  sourceCacheExpiresAt?: string;
 };
 
 export type BrowserCacheKeyParts = {
@@ -53,7 +57,8 @@ export type BrowserCacheLookupResult =
         | "context_mismatch"
         | "storage_unavailable"
         | "category_disabled"
-        | "browser_caching_disabled";
+        | "browser_caching_disabled"
+        | "legacy_incompatible";
       record?: BrowserCacheRecord;
     };
 
@@ -66,7 +71,7 @@ export type BrowserCacheWriteInput = {
   categoryConfigVersion: number;
   invalidationVersion: number;
   providerFetchedAt: string;
-  databaseExpiresAt: string;
+  sourceCacheExpiresAt: string;
   browserTtlSeconds: number;
   responseContextValidUntil?: string | null;
   providerRetentionDeadline?: string | null;

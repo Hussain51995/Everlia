@@ -7,17 +7,17 @@ type Props = {
 
 export function InsightsHeader({ displayHint, customerFirstName }: Props) {
   return (
-    <header className="space-y-1.5">
+    <header className="min-w-0 space-y-1.5">
       <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#38B2D1]">
         Home insights
       </p>
-      <h2 className="text-[1.35rem] font-extrabold tracking-tight text-[#0B1F3D] sm:text-2xl lg:text-[1.75rem]">
+      <h2 className="break-words [overflow-wrap:anywhere] text-[1.25rem] font-extrabold tracking-tight text-[#0B1F3D] min-[380px]:text-[1.35rem] sm:text-2xl lg:text-[1.75rem]">
         {customerFirstName
           ? `${customerFirstName}, here’s a look at your home`
           : "A look at your home"}
       </h2>
       {displayHint ? (
-        <p className="text-sm text-[#6B849E]">
+        <p className="break-words [overflow-wrap:anywhere] text-sm text-[#6B849E]">
           Based on{" "}
           <span className="font-semibold text-[#0B1F3D]">{displayHint}</span>
         </p>

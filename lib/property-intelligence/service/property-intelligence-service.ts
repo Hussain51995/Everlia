@@ -213,6 +213,20 @@ export class PropertyIntelligenceService {
           state
         );
       }
+      if (state.disposition === "cache_unavailable") {
+        this.deps.usage?.recordCacheUnavailable();
+        results[state.category] = emptyCategoryResult(
+          state.category,
+          "unavailable",
+          {
+            code: "provider_failure",
+            message: state.message,
+            retryable: true,
+            providerId: state.providerId,
+            category: state.category,
+          }
+        );
+      }
       if (state.disposition === "fetch") {
         if (state.reason === "expired") this.deps.usage?.recordExpired();
         else this.deps.usage?.recordCacheMiss();
@@ -222,6 +236,8 @@ export class PropertyIntelligenceService {
         );
       }
     }
+
+    const invalidationGeneration = config.global.configVersion;
 
     const satisfiedByOverlap = new Set<PropertyDataCategory>();
 
@@ -257,8 +273,9 @@ export class PropertyIntelligenceService {
               identityId: identityRow.id,
               payload: details as unknown as Record<string, unknown>,
               ttlSeconds:
-                config.categories.property_details.databaseTtlSeconds,
+                config.categories.property_details.redisTtlSeconds,
               source: results.property_valuation.source,
+              expectedInvalidationGeneration: invalidationGeneration,
             });
             results.property_details = availableFromProvider(
               "property_details",
@@ -280,13 +297,14 @@ export class PropertyIntelligenceService {
       }
 
       const outcome = await this.runOperation(operation, lookup, config);
-      this.applyOperationOutcome(
+      await this.applyOperationOutcome(
         results,
         operation,
         outcome,
         config,
         identityRow.id,
-        satisfiedByOverlap
+        satisfiedByOverlap,
+        invalidationGeneration
       );
     }
 
@@ -362,9 +380,9 @@ export class PropertyIntelligenceService {
     };
 
     const policy = buildCategoryCachePolicy({
-      databaseTtlSeconds: settings.databaseTtlSeconds,
-      maxDatabaseTtlSeconds:
-        operation.capability.retention?.maxDatabaseTtlSeconds ?? null,
+      redisTtlSeconds: settings.redisTtlSeconds,
+      maxRedisTtlSeconds:
+        operation.capability.retention?.maxRedisTtlSeconds ?? null,
       categoryConfigVersion: settings.configVersion,
       permitStaleDisplay: false,
     });
@@ -416,7 +434,7 @@ export class PropertyIntelligenceService {
     });
   }
 
-  private applyOperationOutcome(
+  private async applyOperationOutcome(
     results: PropertyIntelligenceResult["categories"],
     operation: PlannedProviderOperation,
     outcome: ProviderOutcome<unknown>,
@@ -424,7 +442,8 @@ export class PropertyIntelligenceService {
       ReturnType<PropertyIntelligenceSettingsRepository["getResolvedConfig"]>
     >,
     identityId: string,
-    satisfiedByOverlap: Set<PropertyDataCategory>
+    satisfiedByOverlap: Set<PropertyDataCategory>,
+    invalidationGeneration: number
   ) {
     if (outcome.status === "unsupported") {
       results[operation.category] = emptyCategoryResult(
@@ -450,8 +469,8 @@ export class PropertyIntelligenceService {
 
     const data = outcome.data;
     const ttlSeconds = resolveEffectiveTtlSeconds(
-      config.categories[operation.category].databaseTtlSeconds,
-      operation.capability.retention?.maxDatabaseTtlSeconds ?? null
+      config.categories[operation.category].redisTtlSeconds,
+      operation.capability.retention?.maxRedisTtlSeconds ?? null
     );
     const fetchedAt = new Date(outcome.source.retrievedAt);
     const expiresAt = computeExpiresAt(fetchedAt, ttlSeconds);
@@ -471,16 +490,17 @@ export class PropertyIntelligenceService {
       }
     );
 
-    void this.persistCategory({
+    await this.persistCategory({
       category: operation.category,
       providerId: operation.providerId,
       cacheKey: operation.cacheKey,
       identityId,
       payload: data,
-      ttlSeconds: config.categories[operation.category].databaseTtlSeconds,
-      maxDatabaseTtlSeconds:
-        operation.capability.retention?.maxDatabaseTtlSeconds ?? null,
+      ttlSeconds: config.categories[operation.category].redisTtlSeconds,
+      maxRedisTtlSeconds:
+        operation.capability.retention?.maxRedisTtlSeconds ?? null,
       source: outcome.source,
+      expectedInvalidationGeneration: invalidationGeneration,
     });
 
     if (
@@ -499,14 +519,15 @@ export class PropertyIntelligenceService {
           operation.providerId,
           operation.cacheKey.normalizedIdentityKey
         );
-        void this.persistCategory({
+        await this.persistCategory({
           category: "property_details",
           providerId: operation.providerId,
           cacheKey: key,
           identityId,
           payload: details as unknown as Record<string, unknown>,
-          ttlSeconds: config.categories.property_details.databaseTtlSeconds,
+          ttlSeconds: config.categories.property_details.redisTtlSeconds,
           source: outcome.source,
+          expectedInvalidationGeneration: invalidationGeneration,
         });
         results.property_details = availableFromProvider(
           "property_details",
@@ -527,8 +548,9 @@ export class PropertyIntelligenceService {
     identityId: string;
     payload: unknown;
     ttlSeconds: number;
-    maxDatabaseTtlSeconds?: number | null;
+    maxRedisTtlSeconds?: number | null;
     source: import("@/lib/types/property-intelligence").PropertyDataSource | null;
+    expectedInvalidationGeneration?: number;
   }) {
     try {
       const wrapped = wrapCachePayload(input.category, input.payload);
@@ -539,13 +561,21 @@ export class PropertyIntelligenceService {
         identityId: input.identityId,
         payload: wrapped,
         ttl: {
-          databaseTtlSeconds: input.ttlSeconds,
-          maxDatabaseTtlSeconds: input.maxDatabaseTtlSeconds,
+          redisTtlSeconds: input.ttlSeconds,
+          maxRedisTtlSeconds: input.maxRedisTtlSeconds,
         },
         fetchedAt: input.source?.retrievedAt,
         sourceDataAt: input.source?.sourceDataAt,
+        expectedInvalidationGeneration: input.expectedInvalidationGeneration,
       });
-    } catch {
+    } catch (error) {
+      this.deps.usage?.recordCacheWriteFailure();
+      console.warn("[property-intelligence/cache-write]", {
+        category: input.category,
+        providerId: input.providerId,
+        code:
+          error instanceof Error ? error.name : "cache_write_failed",
+      });
     }
   }
 }

@@ -13,7 +13,7 @@ const PUBLIC_DISPLAY = {
 } as const;
 
 const BASE_RETENTION = {
-  maxDatabaseTtlSeconds: null as number | null,
+  maxRedisTtlSeconds: null as number | null,
   notes:
     "Do not exceed RentCast contractual retention. Platform TTLs must remain configurable below any hard licensing cap.",
 };

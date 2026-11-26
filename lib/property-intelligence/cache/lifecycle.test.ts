@@ -1,13 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { MemoryPropertyCacheRepository } from "@/lib/property-intelligence/cache/cache-repository";
-import { createPropertyCacheService } from "@/lib/property-intelligence/cache/cache-service";
-import {
-  createCacheCleanupService,
-  DEFAULT_CACHE_CLEANUP_CONFIG,
-} from "@/lib/property-intelligence/cache/cleanup";
 import { MemoryPropertyFetchLockRepository } from "@/lib/property-intelligence/cache/fetch-locks";
 import { createCacheInvalidationService } from "@/lib/property-intelligence/cache/invalidation";
-import { MemoryPropertyIdentityRepository } from "@/lib/property-intelligence/cache/identity-repository";
+import { createTestPropertyCacheService } from "@/lib/property-intelligence/cache/test-cache";
 import {
   buildCategoryCachePolicy,
   createCachePolicyService,
@@ -42,7 +36,7 @@ describe("cache policy — expiry boundaries", () => {
     const fetchedAt = "2025-06-01T12:00:00.000Z";
     const write = policyService.computeWriteExpiry({
       fetchedAt,
-      databaseTtlSeconds: 100,
+      redisTtlSeconds: 100,
     });
     expect(write.expiresAt).toBe("2025-06-01T12:01:40.000Z");
 
@@ -106,19 +100,16 @@ describe("cache policy — expiry boundaries", () => {
 
   it("TTL shortened by admin expires early without rewriting fetched_at", async () => {
     const clock = makeClock("2025-01-01T00:00:00.000Z");
-    const cacheRepo = new MemoryPropertyCacheRepository();
-    const service = createPropertyCacheService(
-      cacheRepo,
-      new MemoryPropertyIdentityRepository(),
-      { now: clock.now }
-    );
+    const { cache: service } = createTestPropertyCacheService({
+      options: { now: clock.now },
+    });
     const key = service.detailsKey("mock", "PROP|TTL");
     await service.store({
       providerId: "mock",
       category: "property_details",
       key,
       payload: { beds: 3 },
-      ttl: { databaseTtlSeconds: 3600 },
+      ttl: { redisTtlSeconds: 3600 },
       fetchedAt: "2025-01-01T00:00:00.000Z",
     });
 
@@ -127,41 +118,37 @@ describe("cache policy — expiry boundaries", () => {
       providerId: "mock",
       category: "property_details",
       key,
-      policy: buildCategoryCachePolicy({ databaseTtlSeconds: 3600 }),
+      policy: buildCategoryCachePolicy({ redisTtlSeconds: 3600 }),
     });
     expect(stillFresh.status).toBe("hit");
+    if (stillFresh.status === "hit") {
+      expect(stillFresh.record.fetchedAt).toBe("2025-01-01T00:00:00.000Z");
+      expect(stillFresh.record.expiresAt).toBe("2025-01-01T01:00:00.000Z");
+    }
 
     const shortened = await service.getValid({
       providerId: "mock",
       category: "property_details",
       key,
-      policy: buildCategoryCachePolicy({ databaseTtlSeconds: 300 }),
+      policy: buildCategoryCachePolicy({ redisTtlSeconds: 300 }),
     });
     expect(shortened.status).toBe("miss");
     if (shortened.status === "miss") {
       expect(shortened.reason).toBe("expired");
       expect(shortened.tightenedByConfig).toBe(true);
     }
-
-    const row = await cacheRepo.getByCacheKey(key.cacheKey);
-    expect(row?.fetchedAt).toBe("2025-01-01T00:00:00.000Z");
-    expect(row?.expiresAt).toBe("2025-01-01T01:00:00.000Z");
   });
 
   it("TTL extended by admin does not extend stored validity on read", async () => {
     const clock = makeClock("2025-01-01T00:00:00.000Z");
-    const service = createPropertyCacheService(
-      new MemoryPropertyCacheRepository(),
-      new MemoryPropertyIdentityRepository(),
-      { now: clock.now }
-    );
+    const service = createTestPropertyCacheService({ options: { now: clock.now } }).cache;
     const key = service.detailsKey("mock", "PROP|EXT");
     await service.store({
       providerId: "mock",
       category: "property_details",
       key,
       payload: { beds: 2 },
-      ttl: { databaseTtlSeconds: 600 },
+      ttl: { redisTtlSeconds: 600 },
       fetchedAt: "2025-01-01T00:00:00.000Z",
     });
 
@@ -170,7 +157,7 @@ describe("cache policy — expiry boundaries", () => {
       providerId: "mock",
       category: "property_details",
       key,
-      policy: buildCategoryCachePolicy({ databaseTtlSeconds: 86_400 }),
+      policy: buildCategoryCachePolicy({ redisTtlSeconds: 86_400 }),
     });
     expect(afterStoredExpiry.status).toBe("miss");
     if (afterStoredExpiry.status === "miss") {
@@ -181,8 +168,8 @@ describe("cache policy — expiry boundaries", () => {
   it("respects provider retention cap on write", () => {
     const write = policyService.computeWriteExpiry({
       fetchedAt: "2025-01-01T00:00:00.000Z",
-      databaseTtlSeconds: 86_400,
-      maxDatabaseTtlSeconds: 3600,
+      redisTtlSeconds: 86_400,
+      maxRedisTtlSeconds: 3600,
     });
     expect(write.ttlSeconds).toBe(3600);
     expect(write.expiresAt).toBe("2025-01-01T01:00:00.000Z");
@@ -195,25 +182,23 @@ describe("configuration changes + invalidation", () => {
     const before = (await settings.getResolvedConfig()).categories
       .property_details.configVersion;
     settings.setCategoryTtl("property_details", {
-      browserTtlSeconds: 60,
-      databaseTtlSeconds: 120,
+      browserTtlSeconds: 1800,
+      redisTtlSeconds: 86400,
     });
     const after = await settings.getResolvedConfig();
     expect(after.categories.property_details.configVersion).toBe(before + 1);
-    expect(after.categories.property_details.databaseTtlSeconds).toBe(120);
+    expect(after.categories.property_details.redisTtlSeconds).toBe(86400);
     expect(after.global.configVersion).toBeGreaterThan(1);
   });
 
   it("disabled category is a miss without provider work", async () => {
     const clock = makeClock("2025-01-01T00:00:00.000Z");
-    const service = createPropertyCacheService(
-      new MemoryPropertyCacheRepository(),
-      new MemoryPropertyIdentityRepository(),
-      {
+    const service = createTestPropertyCacheService({
+      options: {
         now: clock.now,
         isCategoryEnabled: (c) => c !== "nearby_land",
-      }
-    );
+      },
+    }).cache;
     const key = service.nearbyKey("mock", "nearby_land", "C", {
       kind: "land",
       radiusMiles: 5,
@@ -224,7 +209,7 @@ describe("configuration changes + invalidation", () => {
       category: "nearby_land",
       key,
       payload: { items: [] },
-      ttl: { databaseTtlSeconds: 3600 },
+      ttl: { redisTtlSeconds: 3600 },
     });
     const result = await service.getValid({
       providerId: "mock",
@@ -238,17 +223,14 @@ describe("configuration changes + invalidation", () => {
   });
 
   it("provider change does not serve old-provider data", async () => {
-    const service = createPropertyCacheService(
-      new MemoryPropertyCacheRepository(),
-      new MemoryPropertyIdentityRepository()
-    );
+    const service = createTestPropertyCacheService().cache;
     const key = service.detailsKey("mock", "PROP|P");
     await service.store({
       providerId: "mock",
       category: "property_details",
       key,
       payload: { from: "mock" },
-      ttl: { databaseTtlSeconds: 3600 },
+      ttl: { redisTtlSeconds: 3600 },
     });
     const miss = await service.getValid({
       providerId: "rentcast",
@@ -256,31 +238,27 @@ describe("configuration changes + invalidation", () => {
       key,
     });
     expect(miss.status).toBe("miss");
-    if (miss.status === "miss") expect(miss.reason).toBe("provider_mismatch");
+    if (miss.status === "miss") expect(miss.reason).toBe("not_found");
   });
 
-  it("manual invalidation soft-invalidates without fetching", async () => {
-    const cacheRepo = new MemoryPropertyCacheRepository();
-    const service = createPropertyCacheService(
-      cacheRepo,
-      new MemoryPropertyIdentityRepository()
-    );
+  it("manual invalidation deletes Redis entries without fetching", async () => {
+    const service = createTestPropertyCacheService().cache;
     const key = service.detailsKey("mock", "PROP|INV");
     await service.store({
       providerId: "mock",
       category: "property_details",
       key,
       payload: { x: 1 },
-      ttl: { databaseTtlSeconds: 3600 },
+      ttl: { redisTtlSeconds: 3600 },
     });
 
-    const invalidation = createCacheInvalidationService(cacheRepo);
+    const invalidation = createCacheInvalidationService(service);
     const result = await invalidation.invalidate({
       scope: "property",
       normalizedIdentityKey: "PROP|INV",
     });
     expect(result.triggeredProviderFetch).toBe(false);
-    expect(result.invalidatedCount).toBe(1);
+    expect(result.invalidatedCount).toBeGreaterThanOrEqual(1);
 
     const after = await service.getValid({
       providerId: "mock",
@@ -288,79 +266,62 @@ describe("configuration changes + invalidation", () => {
       key,
     });
     expect(after.status).toBe("miss");
-    if (after.status === "miss") expect(after.reason).toBe("invalidated");
+    if (after.status === "miss") expect(after.reason).toBe("not_found");
 
     const all = await invalidation.invalidate({ scope: "all" });
     expect(all.triggeredProviderFetch).toBe(false);
   });
 });
 
-describe("cleanup job", () => {
-  it("removes expired, invalidated, obsolete schema, negatives, and stale locks", async () => {
+describe("Redis-native expiry (runtime L2)", () => {
+  it("expires independent category TTLs without Supabase payload cleanup", async () => {
     const clock = makeClock("2025-02-01T00:00:00.000Z");
-    const cacheRepo = new MemoryPropertyCacheRepository();
-    const lockRepo = new MemoryPropertyFetchLockRepository();
-    const service = createPropertyCacheService(
-      cacheRepo,
-      new MemoryPropertyIdentityRepository(),
-      { now: clock.now }
-    );
+    const { cache: service, provider } = createTestPropertyCacheService({
+      options: { now: clock.now },
+    });
 
-    const expiredKey = service.detailsKey("mock", "EXPIRED");
+    const detailsKey = service.detailsKey("mock", "EXPIRED");
+    const freshKey = service.detailsKey("mock", "FRESH");
     await service.store({
       providerId: "mock",
       category: "property_details",
-      key: expiredKey,
+      key: detailsKey,
       payload: { old: true },
-      ttl: { databaseTtlSeconds: 10 },
+      ttl: { redisTtlSeconds: 10 },
       fetchedAt: "2025-02-01T00:00:00.000Z",
     });
-
-    const negativeKey = service.detailsKey("mock", "NEG");
-    await service.storeNegative({
-      providerId: "mock",
-      category: "property_details",
-      key: negativeKey,
-      reason: "not_found",
-      ttlSeconds: 10,
-    });
-
-    const freshKey = service.detailsKey("mock", "FRESH");
     await service.store({
       providerId: "mock",
       category: "property_details",
       key: freshKey,
       payload: { fresh: true },
-      ttl: { databaseTtlSeconds: 86_400 },
+      ttl: { redisTtlSeconds: 86_400 },
       fetchedAt: "2025-02-01T00:00:00.000Z",
     });
 
-    await service.store({
+    clock.set("2025-02-01T00:01:00.000Z");
+    const expired = await service.getValid({
       providerId: "mock",
-      category: "property_valuation",
-      key: service.valuationKey("mock", "INV"),
-      payload: { v: 1 },
-      ttl: { databaseTtlSeconds: 86_400 },
+      category: "property_details",
+      key: detailsKey,
+      policy: buildCategoryCachePolicy({ redisTtlSeconds: 10 }),
     });
-    await createCacheInvalidationService(cacheRepo, clock.now).invalidate({
-      scope: "category",
-      category: "property_valuation",
+    const fresh = await service.getValid({
+      providerId: "mock",
+      category: "property_details",
+      key: freshKey,
+      policy: buildCategoryCachePolicy({ redisTtlSeconds: 86_400 }),
     });
+    expect(expired.status).toBe("miss");
+    expect(fresh.status).toBe("hit");
+    expect(provider.size()).toBeGreaterThanOrEqual(1);
+  });
+});
 
-    const obsolete = await service.store({
-      providerId: "mock",
-      category: "market_statistics",
-      key: service.marketKey("mock", {
-        countryCode: "US",
-        zipCode: "00000",
-      }),
-      payload: { m: 1 },
-      ttl: { databaseTtlSeconds: 86_400 },
-    });
-    cacheRepo.rows.set(obsolete.cacheKey, {
-      ...obsolete,
-      schemaVersion: 99,
-    });
+describe("fetch lock recovery (no payload store)", () => {
+  it("expires stale claimed locks without provider calls", async () => {
+    const clock = makeClock("2025-02-01T00:00:00.000Z");
+    const lockRepo = new MemoryPropertyFetchLockRepository();
 
     lockRepo.seed({
       lockKey: "lock-1",
@@ -373,86 +334,11 @@ describe("cleanup job", () => {
     });
 
     clock.set("2025-02-01T00:01:00.000Z");
-    const cleanup = createCacheCleanupService({
-      cacheRepo,
-      lockRepo,
-      now: clock.now,
-      config: {
-        ...DEFAULT_CACHE_CLEANUP_CONFIG,
-        invalidatedRetentionSeconds: 0,
-        terminalLockRetentionSeconds: 0,
-      },
-    });
-
-    const report = await cleanup.run();
-    expect(report.triggeredProviderFetch).toBe(false);
-    expect(report.expiredDeleted).toBeGreaterThanOrEqual(1);
-    expect(report.invalidatedDeleted).toBeGreaterThanOrEqual(1);
-    expect(report.obsoleteSchemaDeleted).toBeGreaterThanOrEqual(1);
-    expect(report.locksExpired).toBe(1);
-
-    expect(await cacheRepo.getByCacheKey(expiredKey.cacheKey)).toBeNull();
-    expect(await cacheRepo.getByCacheKey(freshKey.cacheKey)).not.toBeNull();
-  });
-
-  it("supports concurrent refresh write while cleanup deletes expired", async () => {
-    const clock = makeClock("2025-03-01T00:00:00.000Z");
-    const cacheRepo = new MemoryPropertyCacheRepository();
-    const lockRepo = new MemoryPropertyFetchLockRepository();
-    const service = createPropertyCacheService(
-      cacheRepo,
-      new MemoryPropertyIdentityRepository(),
-      { now: clock.now }
+    const locksExpired = await lockRepo.expireStaleLocks(
+      100,
+      clock.now().toISOString()
     );
-    const key = service.detailsKey("mock", "RACE");
-    await service.store({
-      providerId: "mock",
-      category: "property_details",
-      key,
-      payload: { generation: 1 },
-      ttl: { databaseTtlSeconds: 1 },
-      fetchedAt: "2025-03-01T00:00:00.000Z",
-    });
-
-    clock.set("2025-03-01T00:00:05.000Z");
-    const cleanup = createCacheCleanupService({
-      cacheRepo,
-      lockRepo,
-      now: clock.now,
-    });
-
-    const [cleanupReport, refreshed] = await Promise.all([
-      cleanup.run(),
-      service.store({
-        providerId: "mock",
-        category: "property_details",
-        key,
-        payload: { generation: 2 },
-        ttl: { databaseTtlSeconds: 3600 },
-        fetchedAt: "2025-03-01T00:00:05.000Z",
-      }),
-    ]);
-
-    expect(cleanupReport.triggeredProviderFetch).toBe(false);
-    expect(refreshed.payload).toEqual({ generation: 2 });
-    const row = await cacheRepo.getByCacheKey(key.cacheKey);
-    if (!row || (row.payload as { generation?: number }).generation !== 2) {
-      await service.store({
-        providerId: "mock",
-        category: "property_details",
-        key,
-        payload: { generation: 2 },
-        ttl: { databaseTtlSeconds: 3600 },
-        fetchedAt: "2025-03-01T00:00:05.000Z",
-      });
-    }
-    const final = await service.getValid({
-      providerId: "mock",
-      category: "property_details",
-      key,
-      policy: buildCategoryCachePolicy({ databaseTtlSeconds: 3600 }),
-    });
-    expect(final.status).toBe("hit");
+    expect(locksExpired).toBe(1);
   });
 });
 
@@ -465,16 +351,15 @@ describe("failed refresh does not corrupt cache", () => {
       settings.setCategoryProvider(c, "mock");
     }
     settings.setCategoryTtl("property_details", {
-      browserTtlSeconds: 30,
-      databaseTtlSeconds: 60,
+      browserTtlSeconds: 1800,
+      redisTtlSeconds: 86400,
     });
 
-    const cacheRepo = new MemoryPropertyCacheRepository();
-    const cache = createPropertyCacheService(
-      cacheRepo,
-      new MemoryPropertyIdentityRepository(),
-      { now: clock.now }
-    );
+    const cache = createTestPropertyCacheService({
+      options: { now: clock.now },
+      getInvalidationGeneration: async () =>
+        (await settings.getResolvedConfig()).global.configVersion,
+    }).cache;
 
     let fail = false;
     const inner = createMockProvider({ scenario: "success" });
@@ -537,8 +422,16 @@ describe("failed refresh does not corrupt cache", () => {
 
     const identityKey = first.identity!.normalizedKey;
     const key = cache.detailsKey("mock", identityKey);
-    const stored = await cacheRepo.getByCacheKey(key.cacheKey);
-    expect(stored).toBeTruthy();
+    const stored = await cache.getValid({
+      providerId: "mock",
+      category: "property_details",
+      key,
+      policy: buildCategoryCachePolicy({ redisTtlSeconds: 86_400 }),
+    });
+    expect(stored.status).toBe("hit");
+    if (stored.status !== "hit") return;
+    const originalFetchedAt = stored.record.fetchedAt;
+    const originalExpiresAt = stored.record.expiresAt;
 
     fail = true;
     const stillCached = await pi.getInsights({
@@ -547,16 +440,38 @@ describe("failed refresh does not corrupt cache", () => {
     });
     expect(stillCached.categories.property_details.status).toBe("available");
     expect(stillCached.categories.property_details.data).toBeTruthy();
-    const unchanged = await cacheRepo.getByCacheKey(key.cacheKey);
-    expect(unchanged?.fetchedAt).toBe(stored!.fetchedAt);
-    expect(unchanged?.expiresAt).toBe(stored!.expiresAt);
+    const unchanged = await cache.getValid({
+      providerId: "mock",
+      category: "property_details",
+      key,
+      policy: buildCategoryCachePolicy({ redisTtlSeconds: 86_400 }),
+    });
+    expect(unchanged.status).toBe("hit");
+    if (unchanged.status === "hit") {
+      expect(unchanged.record.fetchedAt).toBe(originalFetchedAt);
+      expect(unchanged.record.expiresAt).toBe(originalExpiresAt);
+    }
 
-    cacheRepo.rows.set(key.cacheKey, {
-      ...stored!,
+    await cache.store({
+      providerId: "mock",
+      category: "property_details",
+      key,
+      payload: stored.record.payload,
+      ttl: { redisTtlSeconds: 60 },
       fetchedAt: "2025-04-01T00:00:00.000Z",
-      expiresAt: "2025-04-01T00:01:00.000Z",
     });
     clock.set("2025-04-01T00:02:00.000Z");
+
+    const expiredLookup = await cache.getValid({
+      providerId: "mock",
+      category: "property_details",
+      key,
+      policy: buildCategoryCachePolicy({ redisTtlSeconds: 60 }),
+    });
+    expect(expiredLookup.status).toBe("miss");
+    if (expiredLookup.status === "miss") {
+      expect(["expired", "not_found"]).toContain(expiredLookup.reason);
+    }
 
     const expiredFail = await pi.getInsights({
       auth,
@@ -566,7 +481,12 @@ describe("failed refresh does not corrupt cache", () => {
     expect(["unavailable", "error", "expired"]).toContain(
       expiredFail.categories.property_details.status
     );
-    const afterFail = await cacheRepo.getByCacheKey(key.cacheKey);
-    expect(afterFail?.expiresAt).toBe("2025-04-01T00:01:00.000Z");
+    const afterFail = await cache.getValid({
+      providerId: "mock",
+      category: "property_details",
+      key,
+      policy: buildCategoryCachePolicy({ redisTtlSeconds: 60 }),
+    });
+    expect(afterFail.status).toBe("miss");
   });
 });

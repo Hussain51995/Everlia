@@ -33,6 +33,8 @@ export type UsageMetricsSnapshot = {
   cacheHits: number;
   cacheMisses: number;
   expiredRecords: number;
+  cacheUnavailable: number;
+  cacheWriteFailures: number;
   endpointOptimizationsAvoided: number;
   deduplicatedRequests: number;
   budgetBlockedRequests: number;
@@ -102,6 +104,14 @@ export class PropertyUsageTracker {
     this.metrics.expiredRecords += 1;
   }
 
+  recordCacheUnavailable() {
+    this.metrics.cacheUnavailable += 1;
+  }
+
+  recordCacheWriteFailure() {
+    this.metrics.cacheWriteFailures += 1;
+  }
+
   recordEndpointOptimizationAvoided() {
     this.metrics.endpointOptimizationsAvoided += 1;
   }
@@ -142,6 +152,8 @@ function emptyMetrics(): UsageMetricsSnapshot {
     cacheHits: 0,
     cacheMisses: 0,
     expiredRecords: 0,
+    cacheUnavailable: 0,
+    cacheWriteFailures: 0,
     endpointOptimizationsAvoided: 0,
     deduplicatedRequests: 0,
     budgetBlockedRequests: 0,
