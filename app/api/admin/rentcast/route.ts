@@ -15,15 +15,15 @@ import {
   type CategoryResult,
 } from "@/lib/rentcast/client";
 
+import { resolveProviderMonthlyBudget } from "@/lib/property-intelligence/execution/budget-config";
+import { currentBillingPeriodKey } from "@/lib/property-intelligence/execution/billing-period";
+
 function getMonthlyBudget(): number {
-  const raw = process.env.RENTCAST_TEST_MONTHLY_BUDGET;
-  const n = parseInt(raw ?? "50", 10);
-  return isNaN(n) || n < 1 ? 50 : n;
+  return resolveProviderMonthlyBudget();
 }
 
 function currentMonthKey(): string {
-  const d = new Date();
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+  return currentBillingPeriodKey();
 }
 
 export async function GET() {
@@ -35,19 +35,31 @@ export async function GET() {
     const monthKey = currentMonthKey();
     const budget = getMonthlyBudget();
 
-    const { data } = await admin
-      .from("rentcast_tester_usage")
-      .select("calls_made")
-      .eq("month_key", monthKey)
+    const { data: shared } = await admin
+      .from("property_intelligence_budget_counters")
+      .select("units_reserved, units_consumed")
+      .eq("provider_id", "rentcast")
+      .eq("api_account_scope", "default")
+      .eq("billing_period", monthKey)
       .maybeSingle();
 
-    const used = data?.calls_made ?? 0;
+    let used = Number(shared?.units_reserved ?? 0);
+    if (!shared) {
+      const { data } = await admin
+        .from("rentcast_tester_usage")
+        .select("calls_made")
+        .eq("month_key", monthKey)
+        .maybeSingle();
+      used = data?.calls_made ?? 0;
+    }
 
     return apiSuccess({
       monthKey,
       budget,
       used,
       remaining: Math.max(0, budget - used),
+      sharedWithPropertyIntelligence: true,
+      note: "Tester and Property Intelligence share the RentCast account budget. Verify the live RentCast allowance before enabling production insights.",
     });
   } catch (err) {
     return apiError(

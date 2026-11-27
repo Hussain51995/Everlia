@@ -5,6 +5,8 @@ import {
   validationError,
 } from "@/lib/api/response";
 import { occasionLabelFromCategory } from "@/lib/cards/labels";
+import { buildPropertyIntelligenceBootstrap } from "@/lib/property-intelligence/bootstrap/build-respond-bootstrap";
+import { SupabasePropertyIntelligenceSettingsRepository } from "@/lib/property-intelligence/settings/repository";
 import { cardResponseSubmitSchema } from "@/lib/validations/cards";
 import { firstZodError } from "@/lib/validations/errors";
 import { shouldAdvanceCardStatus } from "@/lib/mail/status-map";
@@ -12,7 +14,7 @@ import type { PublicRespondPayload } from "@/lib/types/cards";
 
 type Params = { params: { token: string } };
 
-export async function GET(_request: Request, { params }: Params) {
+export async function GET(request: Request, { params }: Params) {
   try {
     const admin = createAdminClient();
     const { data: qr, error } = await admin
@@ -34,7 +36,12 @@ export async function GET(_request: Request, { params }: Params) {
           ),
           customer:customers (
             first_name,
-            last_name
+            last_name,
+            property_address,
+            address_line1,
+            city,
+            province_or_state,
+            postal_or_zip
           ),
           organization:organizations (
             name
@@ -76,14 +83,33 @@ export async function GET(_request: Request, { params }: Params) {
         sender_title?: string;
         personal_message?: string;
         profile_image?: string;
+        phone?: string;
+        email_address?: string;
+        website?: string;
       };
       template?:
         | { name: string; category: string }
         | { name: string; category: string }[]
         | null;
       customer?:
-        | { first_name: string; last_name: string }
-        | { first_name: string; last_name: string }[]
+        | {
+            first_name: string;
+            last_name: string;
+            property_address?: string | null;
+            address_line1?: string | null;
+            city?: string | null;
+            province_or_state?: string | null;
+            postal_or_zip?: string | null;
+          }
+        | {
+            first_name: string;
+            last_name: string;
+            property_address?: string | null;
+            address_line1?: string | null;
+            city?: string | null;
+            province_or_state?: string | null;
+            postal_or_zip?: string | null;
+          }[]
         | null;
       organization?: { name: string } | { name: string }[] | null;
     };
@@ -97,6 +123,41 @@ export async function GET(_request: Request, { params }: Params) {
     const organization = Array.isArray(card.organization)
       ? card.organization[0]
       : card.organization;
+
+    let propertyIntelligence: PublicRespondPayload["propertyIntelligence"] =
+      null;
+    try {
+      const settings = new SupabasePropertyIntelligenceSettingsRepository(admin);
+      const config = await settings.getResolvedConfig();
+      propertyIntelligence = buildPropertyIntelligenceBootstrap({
+        qrTokenRowId: String(qr.id),
+        customer: {
+          property_address: customer?.property_address ?? null,
+          address_line1: customer?.address_line1 ?? null,
+          city: customer?.city ?? null,
+          province_or_state: customer?.province_or_state ?? null,
+          postal_or_zip: customer?.postal_or_zip ?? null,
+        },
+        config,
+      });
+
+      const ifNoneMatch = request.headers.get("if-none-match");
+      if (
+        ifNoneMatch &&
+        propertyIntelligence.etag &&
+        ifNoneMatch === propertyIntelligence.etag
+      ) {
+        return new Response(null, {
+          status: 304,
+          headers: {
+            ETag: propertyIntelligence.etag,
+            "Cache-Control": "private, no-store",
+          },
+        });
+      }
+    } catch {
+      propertyIntelligence = null;
+    }
 
     const now = new Date().toISOString();
     await admin
@@ -128,12 +189,26 @@ export async function GET(_request: Request, { params }: Params) {
       senderName: card.field_values?.sender_name || "your friend",
       senderTitle: card.field_values?.sender_title?.trim() || null,
       profileImageUrl: card.field_values?.profile_image?.trim() || null,
+      senderPhone: card.field_values?.phone?.trim() || null,
+      senderEmail: card.field_values?.email_address?.trim() || null,
+      senderWebsite: card.field_values?.website?.trim() || null,
       occasionLabel: occasionLabelFromCategory(template?.category),
       personalMessage: card.field_values?.personal_message ?? null,
       organizationName: organization?.name ?? null,
+      propertyIntelligence,
     };
 
-    return apiSuccess({ respond: payload });
+    return apiSuccess(
+      { respond: payload },
+      {
+        headers: {
+          ...(propertyIntelligence?.etag
+            ? { ETag: propertyIntelligence.etag }
+            : {}),
+          "Cache-Control": "private, no-store",
+        },
+      }
+    );
   } catch (error) {
     return apiError(
       {

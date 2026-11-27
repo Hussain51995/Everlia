@@ -189,7 +189,9 @@ describe("Phase 6 migration + cron surface", () => {
     const vercel = JSON.parse(
       readFileSync(join(process.cwd(), "vercel.json"), "utf8")
     ) as { crons: Array<{ path: string; schedule: string }> };
-    expect(vercel.crons[0].path).toBe("/api/cron/campaign-mailings");
-    expect(vercel.crons[0].schedule).toBe("0 0 * * *");
+    const campaignCron = vercel.crons.find(
+      (c) => c.path === "/api/cron/campaign-mailings"
+    );
+    expect(campaignCron?.schedule).toBe("0 0 * * *");
   });
 });

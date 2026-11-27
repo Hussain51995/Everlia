@@ -7,15 +7,34 @@ export function Footer() {
       <div className="container-shell">
         <div className="grid items-center gap-6 pb-6 text-center lg:grid-cols-[1fr_auto_1fr] lg:text-left">
           <div className="justify-self-center lg:justify-self-start">
-            <Logo variant="color" href="#top" height={48} />
+            <Logo variant="color" href="/" height={48} />
           </div>
 
           <nav className="flex flex-wrap justify-center gap-x-8 gap-y-3 text-xs font-semibold text-[#446688]">
-            <a href="#top" className="transition-colors hover:text-[#38B2D1]">Home</a>
-            <a href="#features" className="transition-colors hover:text-[#38B2D1]">Features</a>
-            <a href="#how-it-works" className="transition-colors hover:text-[#38B2D1]">How It Works</a>
-            <a href="#teams" className="transition-colors hover:text-[#38B2D1]">For Teams</a>
-            <a href="#pricing" className="transition-colors hover:text-[#38B2D1]">Pricing</a>
+            <a href="/" className="transition-colors hover:text-[#38B2D1]">
+              Home
+            </a>
+            <a
+              href="/#features"
+              className="transition-colors hover:text-[#38B2D1]"
+            >
+              Features
+            </a>
+            <a
+              href="/#how-it-works"
+              className="transition-colors hover:text-[#38B2D1]"
+            >
+              How It Works
+            </a>
+            <a href="/#teams" className="transition-colors hover:text-[#38B2D1]">
+              For Teams
+            </a>
+            <a
+              href="/#pricing"
+              className="transition-colors hover:text-[#38B2D1]"
+            >
+              Pricing
+            </a>
           </nav>
 
           <div className="flex justify-center gap-2.5 lg:justify-end">
@@ -46,9 +65,15 @@ export function Footer() {
         <div className="flex flex-col items-center justify-between gap-4 border-t border-[#C4EBF2] pt-6 text-[11px] font-medium text-[#6380a0] sm:flex-row">
           <span>© 2026 Everlia, Inc. All rights reserved.</span>
           <div className="flex gap-6">
-            <a href="#" className="transition-colors hover:text-[#0B1F3D]">Privacy</a>
-            <a href="#" className="transition-colors hover:text-[#0B1F3D]">Terms</a>
-            <a href="#" className="transition-colors hover:text-[#0B1F3D]">Contact</a>
+            <a href="#" className="transition-colors hover:text-[#0B1F3D]">
+              Privacy
+            </a>
+            <a href="#" className="transition-colors hover:text-[#0B1F3D]">
+              Terms
+            </a>
+            <a href="#" className="transition-colors hover:text-[#0B1F3D]">
+              Contact
+            </a>
           </div>
         </div>
       </div>
