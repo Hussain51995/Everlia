@@ -18,4 +18,13 @@ export {
   useAdminVerifyDomain,
   useAdminDomains,
 } from "@/hooks/admin/use-organization-requests";
+export {
+  usePropertyIntelligenceSettings,
+  usePropertyIntelligenceProviders,
+  useUpdatePropertyIntelligenceSettings,
+  usePropertyIntelligenceRedisHealth,
+  usePropertyIntelligenceCache,
+  useInvalidatePropertyIntelligenceCache,
+  usePropertyIntelligenceUsage,
+} from "@/hooks/admin/use-property-intelligence";
 export { adminKeys } from "@/hooks/admin/keys";

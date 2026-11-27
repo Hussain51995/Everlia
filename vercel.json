@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/campaign-mailings",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/property-intelligence-cleanup",
+      "schedule": "15 3 * * *"
     }
   ]
 }

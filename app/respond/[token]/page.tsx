@@ -4,172 +4,18 @@ import { useState, type FormEvent } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
-import { apiClient, ApiClientError } from "@/lib/api/client";
+import { ApiClientError } from "@/lib/api/client";
 import type { PublicRespondPayload } from "@/lib/types/cards";
-import { UserIcon } from "@/components/ui/Icons";
-import { Logo } from "@/components/ui/Logo";
 import { ThemeLoader } from "@/components/ui/ThemeLoader";
+import { Logo } from "@/components/ui/Logo";
+import { PropertyInsightsExperience } from "@/components/respond/PropertyInsightsPanel";
+import {
+  AgentProfileCard,
+  QuoteIcon,
+} from "@/components/respond/greeting/AgentProfileCard";
+import type { ApiResponse } from "@/lib/types/auth";
 
 type ResponseType = "thank" | "message" | "contact_request";
-
-function MapPinIcon({
-  className = "h-3 w-3",
-}: {
-  className?: string;
-}) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className={`fill-none stroke-current ${className}`}
-      strokeWidth="2.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M12 21s-6-5.5-6-11a6 6 0 1 1 12 0c0 5.5-6 11-6 11Z" />
-      <circle cx="12" cy="10" r="2.2" />
-    </svg>
-  );
-}
-
-function QuoteIcon({
-  className = "h-7 w-7",
-}: {
-  className?: string;
-}) {
-  return (
-    <svg
-      viewBox="0 0 32 24"
-      className={`fill-current ${className}`}
-      aria-hidden
-    >
-      <path d="M0 24V14.4C0 9.2 1.3 5.3 3.9 2.7 6.5.9 9.7 0 13.4 0v5.1c-2.3.2-4 1-5.1 2.3-1.1 1.3-1.6 3.2-1.6 5.7H13V24H0Zm19 0V14.4c0-5.2 1.3-9.1 3.9-11.7C25.5.9 28.7 0 32.4 0v5.1c-2.3.2-4 1-5.1 2.3-1.1 1.3-1.6 3.2-1.6 5.7H32V24H19Z" />
-    </svg>
-  );
-}
-
-function BrandHeader() {
-  return (
-    <header className="flex flex-col items-center pb-3 pt-1 text-center min-[360px]:pb-3.5 sm:pb-5 sm:pt-2">
-      <Logo href="/" height={80} />
-    </header>
-  );
-}
-
-const avatarClassName =
-  "h-20 w-20 shrink-0 overflow-hidden rounded-full bg-[#E8F7FB] shadow-[0_8px_24px_-10px_rgba(11,31,61,0.35)] ring-[3px] ring-white min-[360px]:h-24 min-[360px]:w-24 min-[410px]:h-28 min-[410px]:w-28 sm:h-32 sm:w-32";
-
-function AgentAvatarFallback() {
-  return (
-    <div
-      className={`grid place-items-center text-[#38B2D1] ${avatarClassName}`}
-      aria-hidden
-    >
-      <UserIcon className="h-9 w-9 min-[360px]:h-10 min-[360px]:w-10 sm:h-14 sm:w-14" />
-    </div>
-  );
-}
-
-const FALLBACK_AVATARS = [
-  "/avatars/avatar-01.webp",
-  "/avatars/avatar-02.webp",
-  "/avatars/avatar-03.webp",
-  "/avatars/avatar-04.webp",
-  "/avatars/avatar-05.webp",
-  "/avatars/avatar-06.webp",
-  "/avatars/avatar-07.webp",
-  "/avatars/avatar-08.webp",
-  "/avatars/avatar-09.webp",
-  "/avatars/avatar-10.webp",
-];
-
-function getFallbackAvatar(name: string) {
-  const seed = (name || "agent").trim();
-  const hash = [...seed].reduce(
-    (acc, char) => acc + char.charCodeAt(0),
-    0,
-  );
-
-  return FALLBACK_AVATARS[Math.abs(hash) % FALLBACK_AVATARS.length];
-}
-
-function AgentAvatar({
-  name,
-  imageUrl,
-}: {
-  name: string;
-  imageUrl: string | null;
-}) {
-  const [photoFailed, setPhotoFailed] = useState(false);
-  const [fallbackFailed, setFallbackFailed] = useState(false);
-  const fallbackUrl = getFallbackAvatar(name);
-
-  if (fallbackFailed) {
-    return <AgentAvatarFallback />;
-  }
-
-  const hasCustomPhoto = Boolean(imageUrl && imageUrl.trim());
-  const currentSrc =
-    !hasCustomPhoto || photoFailed ? fallbackUrl : imageUrl || fallbackUrl;
-
-  return (
-    <div className={avatarClassName}>
-      <img
-        src={currentSrc}
-        alt={name}
-        onError={() => {
-          if (!photoFailed && hasCustomPhoto) {
-            setPhotoFailed(true);
-          } else {
-            setFallbackFailed(true);
-          }
-        }}
-        className="h-full w-full rounded-full object-cover object-center"
-      />
-    </div>
-  );
-}
-
-
-function AgentProfileCard({
-  data,
-}: {
-  data: PublicRespondPayload;
-}) {
-  return (
-    <div className="w-full overflow-hidden rounded-2xl border border-[#C4EBF2]/80 bg-[#F7FCFE]/90 p-3 shadow-xs backdrop-blur-xs min-[360px]:p-3.5 sm:p-4">
-      <div className="flex w-full flex-col items-center gap-3 min-[380px]:flex-row min-[380px]:items-center min-[380px]:gap-3.5 sm:gap-4.5">
-        <AgentAvatar
-          name={data.senderName}
-          imageUrl={data.profileImageUrl}
-        />
-
-        <div className="flex min-w-0 w-full flex-1 flex-col justify-center text-center min-[380px]:w-auto min-[380px]:py-0.5 min-[380px]:text-left">
-          <p className="break-words [overflow-wrap:anywhere] text-[15px] font-extrabold leading-snug text-[#0B1F3D] min-[360px]:text-[16px] sm:text-lg">
-            {data.senderName}
-          </p>
-
-          <p className="mt-0.5 break-words [overflow-wrap:anywhere] text-[11.5px] font-medium leading-relaxed text-[#557393] min-[360px]:text-[12px] sm:text-[13px]">
-            {data.senderTitle || "Real Estate Agent"}
-          </p>
-
-          {data.organizationName ? (
-            <p className="mt-0.5 break-words [overflow-wrap:anywhere] text-[11.5px] leading-relaxed text-[#557393] min-[360px]:text-[12px] sm:text-[13px]">
-              {data.organizationName}
-            </p>
-          ) : null}
-
-          <div className="mt-2 flex justify-center min-[380px]:justify-start sm:mt-2.5">
-            <span className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-[#38B2D1] px-2.5 py-1 text-[10px] font-bold leading-none text-white shadow-xs">
-              <MapPinIcon className="h-2.5 w-2.5 shrink-0" />
-              <span className="truncate">Local market expert</span>
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function PublicRespondPage() {
   const params = useParams<{ token: string }>();
@@ -181,32 +27,68 @@ export default function PublicRespondPage() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["respond", token],
-    queryFn: async () => {
-      const result = await apiClient<{
-        respond: PublicRespondPayload;
-      }>(`/api/respond/${token}`);
+    staleTime: 60_000,
+    refetchInterval: 5 * 60_000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: 1,
+    queryFn: async ({ client }) => {
+      const queryKey = ["respond", token] as const;
+      const previous = client.getQueryData<PublicRespondPayload>(queryKey);
+      const etag = previous?.propertyIntelligence?.etag;
 
-      return result.respond;
+      const response = await fetch(`/api/respond/${token}`, {
+        credentials: "include",
+        headers: etag ? { "If-None-Match": etag } : undefined,
+      });
+
+      if (response.status === 304 && previous) {
+        return previous;
+      }
+
+      const payload =
+        (await response.json()) as ApiResponse<{ respond: PublicRespondPayload }>;
+
+      if (!payload.success) {
+        throw new ApiClientError(
+          payload.error.message,
+          payload.error.code,
+          response.status
+        );
+      }
+
+      return payload.data.respond;
     },
   });
 
   const submit = useMutation({
-    mutationFn: (body: {
+    mutationFn: async (body: {
       response_type: ResponseType;
       message?: string;
-    }) =>
-      apiClient(`/api/respond/${token}`, {
+    }) => {
+      const response = await fetch(`/api/respond/${token}`, {
         method: "POST",
-        body,
-      }),
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const payload = (await response.json()) as ApiResponse<unknown>;
+      if (!payload.success) {
+        throw new ApiClientError(
+          payload.error.message,
+          payload.error.code,
+          response.status
+        );
+      }
+      return payload.data;
+    },
     onSuccess: () => setSubmitted(true),
   });
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
-
     if (!selected) return;
-
     await submit.mutateAsync({
       response_type: selected,
       message: selected === "message" ? message : message || undefined,
@@ -214,47 +96,198 @@ export default function PublicRespondPage() {
   };
 
   const senderFirst = data?.senderName?.split(" ")[0] || "them";
+  const showInsights =
+    Boolean(data?.propertyIntelligence?.featureEnabled) &&
+    (data?.propertyIntelligence?.enabledCategories.length ?? 0) > 0;
+  const dualPane =
+    Boolean(showInsights && !submitted && !isLoading && !error);
+
+  const greetingCard = data && !submitted ? (
+    <div
+      className={
+        dualPane
+          ? "flex min-h-full flex-col"
+          : "flex min-h-full flex-col rounded-[1.5rem] border border-[#D7EAF1] bg-white p-4 shadow-[0_16px_40px_-18px_rgba(11,31,61,0.28)] sm:rounded-[1.75rem] sm:p-5 lg:p-6"
+      }
+    >
+      <div className="mb-4 flex justify-center lg:mb-5 lg:justify-start">
+        <Logo href="/" height={56} />
+      </div>
+
+      <p className="break-words [overflow-wrap:anywhere] text-[9px] font-bold uppercase tracking-[0.16em] text-[#38B2D1] sm:text-[10px] sm:tracking-[0.18em]">
+        {data.occasionLabel ?? "A personal note"}
+      </p>
+
+      <h1 className="font-cursive mt-1 break-words [overflow-wrap:anywhere] text-[1.75rem] font-bold italic leading-[1.08] text-[#0B1F3D] sm:text-[2rem] lg:text-[2.15rem]">
+        Dear {data.customerFirstName},
+      </h1>
+
+      <div className="mt-4">
+        <AgentProfileCard data={data} />
+      </div>
+
+      {data.personalMessage ? (
+        <div className="mt-4 rounded-2xl border border-[#DDF3F8] bg-[#EEF8FB] px-3.5 py-3 sm:px-4 sm:py-3.5">
+          <QuoteIcon className="h-4 w-5 text-[#8FD4E6]" />
+          <p className="mt-1 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-[13px] font-medium leading-relaxed text-[#0B1F3D] sm:text-[14px]">
+            {data.personalMessage}
+          </p>
+        </div>
+      ) : null}
+
+      <form
+        onSubmit={onSubmit}
+        className="mt-5 flex flex-1 flex-col space-y-2.5 sm:mt-6 sm:space-y-3"
+      >
+        <p className="text-[14px] font-extrabold leading-snug text-[#0B1F3D] sm:text-[15px]">
+          How would you like to respond?
+        </p>
+
+        {(
+          [
+            {
+              id: "thank" as const,
+              title: `Thank ${senderFirst}`,
+              desc: "Send a warm note of appreciation.",
+            },
+            {
+              id: "message" as const,
+              title: "Send a Message",
+              desc: "Write a personal reply.",
+            },
+            {
+              id: "contact_request" as const,
+              title: `Ask ${senderFirst} to Contact Me`,
+              desc: "Let them know you’d like to connect.",
+            },
+          ] as const
+        ).map((option) => {
+          const isActive = selected === option.id;
+          return (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => setSelected(option.id)}
+              aria-pressed={isActive}
+              className={`flex min-h-12 w-full touch-manipulation items-start gap-2.5 rounded-2xl border px-3 py-2.5 text-left transition active:scale-[0.99] sm:min-h-[3.35rem] sm:items-center sm:gap-3 sm:px-3.5 sm:py-3 ${
+                isActive
+                  ? "border-[#38B2D1] bg-[#F0FAFC] shadow-xs"
+                  : "border-[#D7E8EE] bg-white hover:bg-[#F9FDFE]"
+              }`}
+            >
+              <span
+                className={`mt-0.5 grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full border-2 sm:mt-0 ${
+                  isActive
+                    ? "border-[#38B2D1] bg-[#38B2D1]"
+                    : "border-[#B7D5DF] bg-white"
+                }`}
+                aria-hidden
+              >
+                {isActive ? (
+                  <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                ) : null}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block break-words [overflow-wrap:anywhere] text-[13px] font-extrabold leading-snug text-[#0B1F3D] sm:text-sm">
+                  {option.title}
+                </span>
+                <span className="mt-0.5 block break-words [overflow-wrap:anywhere] text-[11px] leading-snug text-[#6B849E] sm:text-xs">
+                  {option.desc}
+                </span>
+              </span>
+            </button>
+          );
+        })}
+
+        {selected ? (
+          <label className="block space-y-1.5 pt-0.5 sm:pt-1">
+            <span className="text-[11.5px] font-bold text-[#0B1F3D] sm:text-xs">
+              {selected === "message" ? "Your message" : "Optional note"}
+            </span>
+            <textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              rows={3}
+              required={selected === "message"}
+              placeholder={
+                selected === "message"
+                  ? "Write your message…"
+                  : "Add a personal note (optional)..."
+              }
+              className="min-h-[6rem] w-full resize-y rounded-2xl border border-[#D7E8EE] bg-white px-3 py-2.5 text-base leading-relaxed text-[#0B1F3D] outline-none transition placeholder:text-[#9BB0C2] focus:border-[#38B2D1] focus:ring-2 focus:ring-[#38B2D1]/15 sm:px-3.5 sm:py-3 sm:text-sm"
+            />
+          </label>
+        ) : null}
+
+        {submit.isError ? (
+          <p className="break-words [overflow-wrap:anywhere] text-xs font-semibold text-rose-600">
+            {submit.error instanceof ApiClientError
+              ? submit.error.message
+              : "Something went wrong."}
+          </p>
+        ) : null}
+
+        <button
+          type="submit"
+          disabled={!selected || submit.isPending}
+          className="mt-auto flex min-h-12 w-full touch-manipulation items-center justify-center gap-2 rounded-2xl bg-[#0B1F3D] px-4 py-2.5 text-[14px] font-bold text-white shadow-[0_10px_25px_-8px_rgba(11,31,61,0.45)] transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-[3.25rem] sm:text-[15px]"
+        >
+          {submit.isPending ? "Sending…" : "Send response"}
+          {!submit.isPending ? (
+            <span aria-hidden className="text-base leading-none">
+              →
+            </span>
+          ) : null}
+        </button>
+      </form>
+    </div>
+  ) : null;
 
   return (
-    <div className="relative min-h-screen min-h-[100svh] overflow-x-hidden">
+    <div
+      className={`relative overflow-x-hidden ${
+        dualPane
+          ? "min-h-[100svh] lg:h-[100svh] lg:max-h-[100svh] lg:overflow-hidden"
+          : "min-h-screen min-h-[100svh]"
+      }`}
+    >
       <div
         className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
         aria-hidden="true"
       >
-        <img
-          src="/images/hero-house-hd.png"
-          alt=""
-          className="h-full w-full scale-[1.02] object-cover object-[68%_center] min-[480px]:scale-100 min-[480px]:object-[62%_center] sm:object-center"
-        />
-
-        <div className="absolute inset-0 bg-[#E2F2F6]/75 backdrop-blur-[2px]" />
+        <div className="absolute inset-0 bg-[linear-gradient(160deg,#EAF6FA_0%,#F4FBFD_42%,#E7F3F8_100%)]" />
+        <div className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-[#C4EBF2]/35 blur-3xl" />
+        <div className="absolute -right-16 bottom-0 h-80 w-80 rounded-full bg-[#38B2D1]/15 blur-3xl" />
       </div>
 
-      <main className="relative z-10 mx-auto flex min-h-screen min-h-[100svh] w-full max-w-[30rem] flex-col px-2.5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(0.5rem,env(safe-area-inset-top))] min-[340px]:px-3 min-[360px]:px-3.5 min-[360px]:pb-[max(1.75rem,env(safe-area-inset-bottom))] min-[360px]:pt-[max(0.75rem,env(safe-area-inset-top))] sm:max-w-md sm:px-4">
-        <BrandHeader />
-
+      <main
+        className={`relative z-10 mx-auto w-full px-3 sm:px-5 lg:px-6 xl:px-8 ${
+          dualPane
+            ? "flex max-w-[90rem] flex-col pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] lg:h-full lg:min-h-0 lg:overflow-hidden lg:pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+            : "max-w-lg pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:max-w-md"
+        }`}
+      >
         {isLoading ? (
-          <div className="rounded-[1.35rem] border border-white/80 bg-white/95 p-6 shadow-[0_20px_50px_-15px_rgba(11,31,61,0.22)] backdrop-blur-md min-[360px]:rounded-3xl min-[360px]:p-8 sm:p-10">
+          <div className="mx-auto mt-8 max-w-md rounded-[1.5rem] border border-white/90 bg-white p-8 shadow-[0_16px_40px_-18px_rgba(11,31,61,0.28)]">
             <ThemeLoader label="Opening your card…" size="lg" />
           </div>
         ) : error ? (
-          <div className="rounded-[1.35rem] border border-white/80 bg-white/95 px-4 py-7 text-center shadow-[0_20px_50px_-15px_rgba(11,31,61,0.22)] backdrop-blur-md min-[360px]:rounded-3xl min-[360px]:px-5 min-[360px]:py-8 sm:px-6">
-            <h1 className="text-lg font-extrabold text-[#0B1F3D] min-[360px]:text-xl">
+          <div className="mx-auto mt-8 max-w-md rounded-[1.5rem] border border-white/90 bg-white px-5 py-8 text-center shadow-[0_16px_40px_-18px_rgba(11,31,61,0.28)]">
+            <h1 className="text-xl font-extrabold text-[#0B1F3D]">
               Link unavailable
             </h1>
-
-            <p className="mt-2 break-words [overflow-wrap:anywhere] text-[13px] leading-relaxed text-[#557393] min-[360px]:text-sm">
+            <p className="mt-2 text-sm leading-relaxed text-[#557393]">
               {error instanceof ApiClientError
                 ? error.message
                 : "This link is invalid or expired."}
             </p>
           </div>
         ) : submitted ? (
-          <div className="rounded-[1.35rem] border border-white/80 bg-white/95 px-4 py-8 text-center shadow-[0_20px_50px_-15px_rgba(11,31,61,0.22)] backdrop-blur-md min-[360px]:rounded-3xl min-[360px]:px-5 min-[360px]:py-9 sm:px-6 sm:py-10">
-            <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[#E8F7FB] text-[#38B2D1] ring-1 ring-[#C4EBF2] min-[360px]:h-14 min-[360px]:w-14">
+          <div className="mx-auto mt-8 max-w-md rounded-[1.5rem] border border-white/90 bg-white px-5 py-10 text-center shadow-[0_16px_40px_-18px_rgba(11,31,61,0.28)]">
+            <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#E8F7FB] text-[#38B2D1] ring-1 ring-[#C4EBF2]">
               <svg
                 viewBox="0 0 24 24"
-                className="h-6 w-6 fill-none stroke-current min-[360px]:h-7 min-[360px]:w-7"
+                className="h-7 w-7 fill-none stroke-current"
                 strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -263,12 +296,10 @@ export default function PublicRespondPage() {
                 <path d="M5 13l4 4L19 7" />
               </svg>
             </div>
-
-            <h1 className="mt-4 text-[1.4rem] font-extrabold tracking-tight text-[#0B1F3D] min-[360px]:mt-5 min-[360px]:text-2xl">
+            <h1 className="mt-5 text-2xl font-extrabold tracking-tight text-[#0B1F3D]">
               Thank you
             </h1>
-
-            <p className="mx-auto mt-2.5 max-w-sm break-words [overflow-wrap:anywhere] text-[13px] leading-relaxed text-[#557393] min-[360px]:mt-3 min-[360px]:text-sm">
+            <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-[#557393]">
               Your message is on its way to{" "}
               <span className="font-semibold text-[#0B1F3D]">
                 {data?.senderName}
@@ -276,145 +307,23 @@ export default function PublicRespondPage() {
               . Relationships grow one thoughtful note at a time.
             </p>
           </div>
-        ) : (
-          <section className="w-full rounded-[1.35rem] border border-white/80 bg-white/95 px-3 py-4 shadow-[0_20px_50px_-15px_rgba(11,31,61,0.22)] backdrop-blur-md min-[340px]:px-3.5 min-[360px]:rounded-3xl min-[360px]:px-4 min-[360px]:py-5 sm:rounded-[1.75rem] sm:px-6 sm:py-7">
-            <p className="break-words [overflow-wrap:anywhere] text-[9px] font-bold uppercase tracking-[0.16em] text-[#38B2D1] min-[360px]:text-[10px] min-[360px]:tracking-[0.18em]">
-              {data?.occasionLabel ?? "A personal note"}
-            </p>
-
-            <h1 className="font-cursive mt-1 break-words [overflow-wrap:anywhere] text-[1.7rem] font-bold italic leading-[1.08] text-[#0B1F3D] min-[360px]:text-[1.95rem] sm:text-[2.4rem]">
-              Dear {data?.customerFirstName},
-            </h1>
-
-            <p className="mt-1.5 text-[12px] leading-relaxed text-[#6B849E] min-[360px]:text-[12.5px] sm:text-[13px]">
-              You&apos;re responding to your real estate agent.
-            </p>
-
-            {data ? (
-              <div className="mt-3 min-[360px]:mt-3.5 sm:mt-4">
-                <AgentProfileCard data={data} />
+        ) : showInsights ? (
+          <div className="grid gap-4 md:gap-5 lg:h-full lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(280px,360px)_minmax(0,1fr)] lg:grid-rows-1 lg:gap-5 xl:grid-cols-[minmax(300px,380px)_minmax(0,1fr)] xl:gap-6">
+            <aside className="order-1 flex min-w-0 flex-col rounded-[1.5rem] border border-[#D7EAF1] bg-white shadow-[0_16px_40px_-18px_rgba(11,31,61,0.28)] sm:rounded-[1.75rem] lg:h-full lg:min-h-0 lg:overflow-hidden">
+              <div className="p-4 sm:p-5 lg:everlia-pane-scroll lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain lg:p-6">
+                {greetingCard}
               </div>
-            ) : null}
-
-            {data?.personalMessage ? (
-              <div className="mt-3 rounded-2xl border border-[#DDF3F8] bg-[#EEF8FB] px-3 py-2.5 min-[360px]:mt-3.5 min-[360px]:px-3.5 min-[360px]:py-3 sm:mt-4 sm:px-4 sm:py-3.5">
-                <QuoteIcon className="h-4 w-5 text-[#8FD4E6] sm:h-5 sm:w-6" />
-
-                <p className="mt-1 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-[13px] font-medium leading-relaxed text-[#0B1F3D] min-[360px]:text-[13.5px] sm:text-[14px]">
-                  {data.personalMessage}
-                </p>
-              </div>
-            ) : null}
-
-            <form
-              onSubmit={onSubmit}
-              className="mt-4 space-y-2.5 min-[360px]:mt-5 sm:mt-6 sm:space-y-3"
-            >
-              <p className="text-[13.5px] font-extrabold leading-snug text-[#0B1F3D] min-[360px]:text-[14px] sm:text-[15px]">
-                How would you like to respond?
-              </p>
-
-              {(
-                [
-                  {
-                    id: "thank" as const,
-                    title: `Thank ${senderFirst}`,
-                    desc: "Send a warm note of appreciation.",
-                  },
-                  {
-                    id: "message" as const,
-                    title: "Send a Message",
-                    desc: "Write a personal reply.",
-                  },
-                  {
-                    id: "contact_request" as const,
-                    title: `Ask ${senderFirst} to Contact Me`,
-                    desc: "Let them know you’d like to connect.",
-                  },
-                ] as const
-              ).map((option) => {
-                const isActive = selected === option.id;
-
-                return (
-                  <button
-                    key={option.id}
-                    type="button"
-                    onClick={() => setSelected(option.id)}
-                    aria-pressed={isActive}
-                    className={`flex min-h-12 w-full touch-manipulation items-start gap-2.5 rounded-2xl border px-3 py-2.5 text-left transition active:scale-[0.99] min-[360px]:min-h-[3.4rem] min-[360px]:items-center min-[360px]:gap-3 min-[360px]:px-3.5 sm:min-h-[3.6rem] sm:py-3 ${isActive
-                      ? "border-[#38B2D1] bg-[#F0FAFC] shadow-xs"
-                      : "border-[#D7E8EE] bg-white/90 hover:bg-[#F9FDFE]"
-                      }`}
-                  >
-                    <span
-                      className={`mt-0.5 grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full border-2 min-[360px]:mt-0 ${isActive
-                        ? "border-[#38B2D1] bg-[#38B2D1]"
-                        : "border-[#B7D5DF] bg-white"
-                        }`}
-                      aria-hidden
-                    >
-                      {isActive ? (
-                        <span className="h-1.5 w-1.5 rounded-full bg-white" />
-                      ) : null}
-                    </span>
-
-                    <span className="min-w-0 flex-1">
-                      <span className="block break-words [overflow-wrap:anywhere] text-[13px] font-extrabold leading-snug text-[#0B1F3D] min-[360px]:text-[13.5px] sm:text-sm">
-                        {option.title}
-                      </span>
-
-                      <span className="mt-0.5 block break-words [overflow-wrap:anywhere] text-[11px] leading-snug text-[#6B849E] min-[360px]:text-[11.5px] sm:text-xs">
-                        {option.desc}
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
-
-              {selected ? (
-                <label className="block space-y-1.5 pt-0.5 min-[360px]:pt-1">
-                  <span className="text-[11.5px] font-bold text-[#0B1F3D] min-[360px]:text-xs">
-                    {selected === "message" ? "Your message" : "Optional note"}
-                  </span>
-
-                  <textarea
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    rows={3}
-                    required={selected === "message"}
-                    placeholder={
-                      selected === "message"
-                        ? "Write your message…"
-                        : "Add a personal note (optional)..."
-                    }
-                    className="min-h-[6.5rem] w-full resize-y rounded-2xl border border-[#D7E8EE] bg-white px-3 py-2.5 text-base leading-relaxed text-[#0B1F3D] outline-none transition placeholder:text-[#9BB0C2] focus:border-[#38B2D1] focus:ring-2 focus:ring-[#38B2D1]/15 min-[360px]:px-3.5 min-[360px]:py-3 sm:min-h-0 sm:resize-none sm:text-sm"
-                  />
-                </label>
-              ) : null}
-
-              {submit.isError ? (
-                <p className="break-words [overflow-wrap:anywhere] text-xs font-semibold text-rose-600">
-                  {submit.error instanceof ApiClientError
-                    ? submit.error.message
-                    : "Something went wrong."}
-                </p>
-              ) : null}
-
-              <button
-                type="submit"
-                disabled={!selected || submit.isPending}
-                className="mt-1 flex min-h-12 w-full touch-manipulation items-center justify-center gap-2 rounded-2xl bg-[#0B1F3D] px-4 py-2.5 text-[14px] font-bold text-white shadow-[0_10px_25px_-8px_rgba(11,31,61,0.45)] transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 min-[360px]:min-h-[3.25rem] min-[360px]:text-[15px] sm:min-h-[3.35rem]"
-              >
-                {submit.isPending ? "Sending…" : "Send response"}
-
-                {!submit.isPending ? (
-                  <span aria-hidden className="text-base leading-none">
-                    →
-                  </span>
+            </aside>
+            <div className="order-2 flex min-w-0 flex-col rounded-[1.5rem] border border-[#D7EAF1] bg-white shadow-[0_16px_40px_-18px_rgba(11,31,61,0.28)] sm:rounded-[1.75rem] lg:h-full lg:min-h-0 lg:overflow-hidden">
+              <div className="p-3 sm:p-4 lg:everlia-pane-scroll lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain lg:p-5">
+                {data ? (
+                  <PropertyInsightsExperience token={token} respond={data} />
                 ) : null}
-              </button>
-            </form>
-          </section>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="mx-auto w-full max-w-md">{greetingCard}</div>
         )}
       </main>
     </div>
